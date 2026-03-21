@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>typing-trainer</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --text: #e8eef4;
+      --muted: #8b9cb3;
+      --accent: #5eb8ff;
+      --ok: #6bcf7f;
+      --bad: #ff7b7b;
+      --pending: #5c6b7d;
+      --current: #ffd166;
+      --radius: 12px;
+      --font: "Segoe UI", system-ui, sans-serif;
+      --block-gap: 1.25rem;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background: radial-gradient(ellipse 120% 80% at 50% -20%, #1e3a5f 0%, var(--bg) 55%);
+      color: var(--text);
+      padding: var(--block-gap);
+    }
+
+    .app-shell {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: center;
+      gap: var(--block-gap);
+      width: 100%;
+      max-width: 1520px;
+      margin: 0 auto;
+    }
+
+    .main-flow {
+      flex: 1 1 420px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--block-gap);
+    }
+
+    .main-flow > * {
+      width: 100%;
+      max-width: 920px;
+    }
+
+    .main-flow > h1 {
+      max-width: none;
+      width: auto;
+    }
+
+    h1 {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      color: var(--muted);
+      margin: 0;
+      text-transform: uppercase;
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: var(--block-gap);
+      width: 100%;
+      max-width: 920px;
+      margin: 0;
+    }
+
+    .stat {
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.25);
+    }
+
+    .stat label {
+      display: block;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 0.35rem;
+    }
+
+    .stat span {
+      font-size: 1.45rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+    }
+
+    .panel {
+      width: 100%;
+      max-width: 920px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: var(--block-gap);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .reference-title {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 0.6rem;
+    }
+
+    .reference-title strong {
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    #reference {
+      font-size: clamp(1.35rem, 3.5vw, 2rem);
+      line-height: 1.55;
+      letter-spacing: 0.02em;
+      word-break: break-word;
+      min-height: 4.5em;
+    }
+
+    #reference .ch {
+      border-radius: 3px;
+      padding: 0 1px;
+    }
+
+    #reference .pending {
+      color: var(--pending);
+    }
+
+    #reference .current {
+      background: rgba(255, 209, 102, 0.22);
+      color: var(--current);
+      box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.35);
+    }
+
+    #reference .ch.error-flash {
+      animation: errFlash 0.45s ease;
+    }
+
+    @keyframes errFlash {
+      0%,
+      100% {
+        box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.35);
+        background: rgba(255, 209, 102, 0.22);
+        color: var(--current);
+      }
+      35% {
+        box-shadow: 0 0 0 3px rgba(255, 80, 80, 0.85);
+        background: rgba(255, 80, 80, 0.45);
+        color: #fff;
+      }
+    }
+
+    #reference .ok {
+      color: var(--ok);
+    }
+
+    #reference .bad {
+      color: var(--bad);
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+
+    .input-wrap {
+      width: 100%;
+      max-width: 920px;
+      margin: 0;
+    }
+
+    #typing {
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      resize: vertical;
+      font-family: var(--font);
+      font-size: clamp(1.2rem, 3vw, 1.75rem);
+      line-height: 1.4;
+      padding: 0.9rem 1rem;
+      border-radius: var(--radius);
+      border: 2px solid rgba(94, 184, 255, 0.35);
+      background: rgba(15, 20, 25, 0.65);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+
+    #typing:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 4px rgba(94, 184, 255, 0.15);
+    }
+
+    .actions {
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--block-gap);
+      flex-wrap: wrap;
+    }
+
+    .actions button {
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 600;
+      padding: 0.75rem 1.35rem;
+      border: 2px solid rgba(94, 184, 255, 0.45);
+      border-radius: 999px;
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      box-shadow: none;
+      transition: transform 0.12s, background 0.12s, border-color 0.12s, box-shadow 0.12s,
+        color 0.12s;
+    }
+
+    .actions button:hover:not(:disabled) {
+      transform: translateY(-1px);
+      background: rgba(94, 184, 255, 0.1);
+      border-color: var(--accent);
+    }
+
+    .actions button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .actions button.is-selected {
+      border-color: transparent;
+      color: #fff;
+      background: linear-gradient(145deg, #4a9fe8, #2d7cc4);
+      box-shadow: 0 4px 20px rgba(45, 124, 196, 0.45);
+    }
+
+    .actions button.is-selected:hover:not(:disabled) {
+      box-shadow: 0 6px 28px rgba(45, 124, 196, 0.55);
+    }
+
+    .actions button:focus-visible {
+      outline: 2px solid var(--current);
+      outline-offset: 3px;
+    }
+
+    .actions button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      transform: none;
+      pointer-events: none;
+    }
+
+    .hint {
+      font-size: 0.85rem;
+      color: var(--muted);
+      max-width: 920px;
+      margin: 0;
+      line-height: 1.5;
+    }
+
+    .hint a {
+      color: var(--accent);
+    }
+
+    .hint a:hover {
+      text-decoration: underline;
+    }
+
+    .loading {
+      opacity: 0.55;
+      pointer-events: none;
+    }
+
+    .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .error-msg {
+      color: var(--bad);
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    .history-panel {
+      flex: 0 1 540px;
+      width: 100%;
+      max-width: 640px;
+      background: var(--surface);
+      border-radius: var(--radius);
+      padding: var(--block-gap);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35);
+    }
+
+    .history-panel h2 {
+      margin: 0 0 var(--block-gap);
+      font-size: 1.1rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .history-scroll {
+      max-height: min(72vh, 840px);
+      overflow: auto;
+      margin: 0 -0.35rem;
+      padding: 0 0.35rem;
+    }
+
+    .history-panel table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 1.08rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .history-panel th {
+      text-align: right;
+      padding: 0.6rem 0.35rem;
+      font-size: 0.88rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      position: sticky;
+      top: 0;
+      background: var(--surface);
+      z-index: 1;
+    }
+
+    .history-panel th:first-child,
+    .history-panel td:first-child {
+      text-align: left;
+    }
+
+    .history-panel th:nth-child(2),
+    .history-panel td:nth-child(2) {
+      text-align: left;
+    }
+
+    .history-panel td {
+      padding: 0.65rem 0.35rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      vertical-align: top;
+    }
+
+    .history-panel tbody tr:hover td {
+      background: rgba(94, 184, 255, 0.06);
+    }
+
+    .history-empty {
+      margin: 0;
+      padding: var(--block-gap) 0.35rem;
+      font-size: 1.2rem;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+  <div class="main-flow">
+  <h1>Клавиатурный тренажёр</h1>
+
+  <div class="stats">
+    <div class="stat"><label>Знаков/мин</label><span id="cpm">0</span></div>
+    <div class="stat"><label>Слов/мин</label><span id="wpm">0</span></div>
+    <div class="stat"><label>Точность</label><span id="acc">100%</span></div>
+    <div class="stat"><label>Время</label><span id="time">0:00</span></div>
+    <div class="stat"><label>Ошибки</label><span id="errs">0</span></div>
+  </div>
+
+  <div class="panel">
+    <div class="reference-title">Текст: <strong id="article-title">—</strong></div>
+    <div id="reference" aria-live="polite"></div>
+    <p class="error-msg" id="fetch-error" hidden></p>
+  </div>
+
+  <div class="input-wrap">
+    <label for="typing" class="visually-hidden">Набор текста</label>
+    <textarea id="typing" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Начните набирать здесь…"></textarea>
+  </div>
+
+  <div class="actions" role="toolbar" aria-label="Режимы заданий">
+    <button type="button" id="btn-text" class="is-selected" aria-pressed="true">Текст</button>
+    <button type="button" id="btn-digits" aria-pressed="false">Цифры</button>
+    <button type="button" id="btn-bigrams" aria-pressed="false">Биграммы</button>
+    <button type="button" id="btn-trimms" aria-pressed="false">Триммы</button>
+    <button type="button" id="btn-chunks" aria-pressed="false">Связки</button>
+  </div>
+
+  <p class="hint" id="mode-hint" role="status" aria-live="polite"></p>
+  </div>
+
+  <aside class="history-panel" aria-labelledby="history-heading">
+    <h2 id="history-heading">Результаты попыток</h2>
+    <div class="history-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Когда</th>
+            <th scope="col">Режим</th>
+            <th scope="col">Зн/м</th>
+            <th scope="col">Сл/м</th>
+            <th scope="col">Точность</th>
+            <th scope="col">Время</th>
+            <th scope="col">Ошибки</th>
+          </tr>
+        </thead>
+        <tbody id="history-tbody"></tbody>
+      </table>
+      <p class="history-empty" id="history-empty">Завершите набор текста — строка появится здесь.</p>
+    </div>
+  </aside>
+  </div>
+
+  <script>
+(function () {
+  var WIKI_SUMMARY = "https://simple.wikipedia.org/api/rest_v1/page/random/summary";
+  var MAX_WIKI_ATTEMPTS = 20;
+  var LETTER_RE = /\p{L}/u;
+
+  var FALLBACK = [
+    "The Sun is a star at the center of the Solar System. It is a nearly perfect ball of hot plasma. The Sun is by far the most important source of energy for life on Earth.",
+    "Water is a chemical substance. It is transparent and has no smell. All living things need water to live. People can not live without water for more than a few days.",
+    "A computer is a machine that can be programmed to carry out tasks. Modern computers can do many kinds of work, from math to playing games and showing videos.",
+    "Music is a form of art that uses sound organized in time. People make music with voices and many kinds of instruments. People listen to music for fun and for many other reasons.",
+    "The Internet is a global system of connected computer networks. It lets people share information and talk to each other using many services like email and the World Wide Web."
+  ];
+
+  var referenceEl = document.getElementById("reference");
+  var titleEl = document.getElementById("article-title");
+  var typingEl = document.getElementById("typing");
+  var btnText = document.getElementById("btn-text");
+  var btnDigits = document.getElementById("btn-digits");
+  var btnBigrams = document.getElementById("btn-bigrams");
+  var btnTrimms = document.getElementById("btn-trimms");
+  var btnChunks = document.getElementById("btn-chunks");
+  var fetchErrorEl = document.getElementById("fetch-error");
+  var hintEl = document.getElementById("mode-hint");
+  var actionButtons = document.querySelectorAll(".actions button");
+
+  var MODE_HINTS = {
+    wiki:
+      'Текст подгружается c <a href="https://simple.wikipedia.org" target="_blank" rel="noopener">Simple English Wikipedia</a> (берутся только отрывки без «чужих» алфавитов в буквах). Неверный символ не засчитывается — нужно нажать правильную клавишу. Если сеть или подбор не удались — встроенные отрывки.',
+    digits:
+      "Случайные блоки цифр (через пробел) для тренировки ряда чисел и numpad. Неверный символ не пишется в поле — сначала нажмите верную цифру; звук и красная вспышка подсказывают ошибку.",
+    bigrams:
+      "Восемьдесят случайных английских биграмм из пула частых пар букв. Неверный символ не засчитывается, пока не нажмёте нужную клавишу.",
+    trimms:
+      "Сорок случайных фрагментов из частых трёх–четырёхбуквенных сочетаний английского (the, ing, -tion и т.п.). Строгий режим ввода: только точное совпадение c эталоном.",
+    chunks:
+      "Связки букв для перекатов пальцев и привычных морфем в английском. Неправильная клавиша не продвигает ввод — подсветка и звук, как в остальных режимах.",
+  };
+
+  function setModeHint(modeKey) {
+    if (!hintEl) return;
+    var html = MODE_HINTS[modeKey];
+    if (html) hintEl.innerHTML = html;
+  }
+
+  function setSelectedModeButton(el) {
+    for (var i = 0; i < actionButtons.length; i++) {
+      var b = actionButtons[i];
+      b.classList.remove("is-selected");
+      b.setAttribute("aria-pressed", "false");
+    }
+    el.classList.add("is-selected");
+    el.setAttribute("aria-pressed", "true");
+  }
+
+  var DIGITS_BLOCK_LEN = 4;
+  var DIGITS_COUNT = 36;
+
+  var BIGRAMS = [
+    "th",
+    "he",
+    "in",
+    "er",
+    "re",
+    "on",
+    "an",
+    "ti",
+    "en",
+    "nd",
+    "ed",
+    "es",
+    "to",
+    "or",
+    "at",
+    "ou",
+    "ha",
+    "ar",
+    "it",
+    "is",
+    "st",
+    "nt",
+    "of",
+    "li",
+    "le",
+    "me",
+    "ve",
+    "co",
+    "de",
+    "ra",
+    "sa",
+    "fo",
+    "ho",
+    "ma",
+    "al",
+    "se",
+    "wi",
+    "wh",
+    "ch",
+    "be",
+  ];
+  var BIGRAMS_COUNT = 80;
+  var BIGRAMS_SEP = " ";
+
+  var TRIMMS = [
+    "the",
+    "ing",
+    "tion",
+    "ment",
+    "able",
+    "ible",
+    "and",
+    "ent",
+    "for",
+    "ion",
+    "her",
+    "tha",
+    "hat",
+    "ere",
+    "ate",
+    "ter",
+    "ver",
+    "all",
+    "ant",
+    "age",
+    "est",
+    "ure",
+    "con",
+    "com",
+    "pro",
+    "int",
+    "our",
+    "out",
+    "not",
+    "wit",
+    "ove",
+    "has",
+    "was",
+    "are",
+    "but",
+    "uld",
+    "ell",
+    "ine",
+    "oun",
+    "ise",
+  ];
+  var TRIMMS_COUNT = 40;
+  var TRIMMS_SEP = " ";
+
+  var CHUNKS = [
+    "tion", "ation", "ment", "ness", "able", "ible", "ally", "ical",
+    "ance", "ence", "fully", "ever", "over", "ough", "ight", "ould",
+    "ring", "ling", "king", "sing", "wing", "ther", "ound", "less",
+    "ward", "fore", "ities", "izer", "self", "ously", "inter", "under",
+    "after", "right", "where", "their", "there", "these", "thing", "think",
+  ];
+  var CHUNKS_COUNT = 40;
+  var CHUNKS_SEP = " ";
+
+  var cpmEl = document.getElementById("cpm");
+  var wpmEl = document.getElementById("wpm");
+  var accEl = document.getElementById("acc");
+  var timeEl = document.getElementById("time");
+  var errsEl = document.getElementById("errs");
+
+  var target = "";
+  var startedAt = null;
+  var errorCount = 0;
+  var prevTyped = "";
+  var audioCtx = null;
+  var activeModeLabel = "Текст";
+  var runCompleteRecorded = false;
+
+  function ensureAudio() {
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (audioCtx.state === "suspended") {
+      audioCtx.resume();
+    }
+  }
+
+  function playKeySound() {
+    ensureAudio();
+    var ctx = audioCtx;
+    var t = ctx.currentTime;
+    var master = ctx.createGain();
+    master.gain.setValueAtTime(0.12, t);
+    master.connect(ctx.destination);
+
+    var osc = ctx.createOscillator();
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(880, t);
+    osc.frequency.exponentialRampToValueAtTime(520, t + 0.04);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(1, t + 0.002);
+    g.gain.exponentialRampToValueAtTime(0.01, t + 0.06);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(t);
+    osc.stop(t + 0.07);
+
+    var noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
+    var data = noiseBuf.getChannelData(0);
+    for (var i = 0; i < data.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * 0.35;
+    }
+    var noise = ctx.createBufferSource();
+    noise.buffer = noiseBuf;
+    var bp = ctx.createBiquadFilter();
+    bp.type = "bandpass";
+    bp.frequency.value = 1800;
+    bp.Q.value = 2;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0, t);
+    ng.gain.linearRampToValueAtTime(0.45, t + 0.001);
+    ng.gain.exponentialRampToValueAtTime(0.01, t + 0.028);
+    noise.connect(bp);
+    bp.connect(ng);
+    ng.connect(master);
+    noise.start(t);
+    noise.stop(t + 0.03);
+  }
+
+  function playErrorSound() {
+    ensureAudio();
+    var ctx = audioCtx;
+    var t = ctx.currentTime;
+    var master = ctx.createGain();
+    master.gain.setValueAtTime(0.22, t);
+    master.connect(ctx.destination);
+
+    var osc = ctx.createOscillator();
+    osc.type = "square";
+    osc.frequency.setValueAtTime(1850, t);
+    osc.frequency.linearRampToValueAtTime(320, t + 0.12);
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.9, t + 0.003);
+    g.gain.exponentialRampToValueAtTime(0.01, t + 0.14);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(t);
+    osc.stop(t + 0.15);
+
+    var osc2 = ctx.createOscillator();
+    osc2.type = "sawtooth";
+    osc2.frequency.setValueAtTime(240, t);
+    osc2.frequency.linearRampToValueAtTime(90, t + 0.1);
+    var g2 = ctx.createGain();
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(0.35, t + 0.002);
+    g2.gain.exponentialRampToValueAtTime(0.01, t + 0.11);
+    osc2.connect(g2);
+    g2.connect(master);
+    osc2.start(t);
+    osc2.stop(t + 0.12);
+  }
+
+  function flashCurrentError() {
+    var typedLen = typingEl.value.length;
+    var spans = referenceEl.querySelectorAll(".ch");
+    var el = spans[typedLen];
+    if (!el) return;
+    el.classList.remove("error-flash");
+    void el.offsetWidth;
+    el.classList.add("error-flash");
+    window.setTimeout(function () {
+      el.classList.remove("error-flash");
+    }, 480);
+  }
+
+  function isOnlyEnglishLetters(text) {
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (/[a-zA-Z]/.test(c)) continue;
+      if (LETTER_RE.test(c)) return false;
+    }
+    return true;
+  }
+
+  function normalizeText(s) {
+    return s.replace(/\s+/g, " ").trim();
+  }
+
+  function trimToLength(s, max) {
+    if (s.length <= max) return s;
+    var cut = s.slice(0, max);
+    var lastSpace = cut.lastIndexOf(" ");
+    if (lastSpace > max * 0.6) return cut.slice(0, lastSpace);
+    return cut;
+  }
+
+  function pickFallback() {
+    var i = Math.floor(Math.random() * FALLBACK.length);
+    return { title: "Встроенный текст", extract: FALLBACK[i] };
+  }
+
+  function generateDigitsSequence() {
+    var parts = [];
+    for (var i = 0; i < DIGITS_COUNT; i++) {
+      var s = "";
+      for (var j = 0; j < DIGITS_BLOCK_LEN; j++) {
+        s += String(Math.floor(Math.random() * 10));
+      }
+      parts.push(s);
+    }
+    return parts.join(" ");
+  }
+
+  function loadDigits() {
+    fetchErrorEl.hidden = true;
+    applyText(
+      "Цифры · " +
+        DIGITS_COUNT +
+        " блоков по " +
+        DIGITS_BLOCK_LEN +
+        " цифры (через пробел)",
+      generateDigitsSequence(),
+      "Цифры"
+    );
+  }
+
+  function generateBigramsSequence() {
+    var parts = [];
+    for (var i = 0; i < BIGRAMS_COUNT; i++) {
+      parts.push(BIGRAMS[Math.floor(Math.random() * BIGRAMS.length)]);
+    }
+    return parts.join(BIGRAMS_SEP);
+  }
+
+  function loadBigrams() {
+    fetchErrorEl.hidden = true;
+    applyText("Биграммы · 80 элементов", generateBigramsSequence(), "Биграммы");
+  }
+
+  function generateTrimmsSequence() {
+    var parts = [];
+    for (var i = 0; i < TRIMMS_COUNT; i++) {
+      parts.push(TRIMMS[Math.floor(Math.random() * TRIMMS.length)]);
+    }
+    return parts.join(TRIMMS_SEP);
+  }
+
+  function loadTrimms() {
+    fetchErrorEl.hidden = true;
+    applyText("Триммы · 40 элементов", generateTrimmsSequence(), "Триммы");
+  }
+
+  function generateChunksSequence() {
+    var parts = [];
+    for (var i = 0; i < CHUNKS_COUNT; i++) {
+      parts.push(CHUNKS[Math.floor(Math.random() * CHUNKS.length)]);
+    }
+    return parts.join(CHUNKS_SEP);
+  }
+
+  function loadChunks() {
+    fetchErrorEl.hidden = true;
+    applyText("Связки · 40 элементов", generateChunksSequence(), "Связки");
+  }
+
+  function renderReference() {
+    referenceEl.innerHTML = "";
+    for (var i = 0; i < target.length; i++) {
+      var span = document.createElement("span");
+      span.className = "ch pending";
+      span.textContent = target[i];
+      span.dataset.i = String(i);
+      referenceEl.appendChild(span);
+    }
+    updateHighlight();
+  }
+
+  function updateHighlight() {
+    var typed = typingEl.value;
+    var spans = referenceEl.querySelectorAll(".ch");
+    for (var i = 0; i < spans.length; i++) {
+      var ch = spans[i];
+      ch.classList.remove("pending", "current", "ok", "bad");
+      if (i < typed.length) {
+        ch.classList.add("ok");
+      } else if (i === typed.length) {
+        ch.classList.add("current");
+      } else {
+        ch.classList.add("pending");
+      }
+    }
+  }
+
+  function formatTime(ms) {
+    var sec = Math.floor(ms / 1000);
+    var m = Math.floor(sec / 60);
+    var s = sec % 60;
+    return m + ":" + (s < 10 ? "0" : "") + s;
+  }
+
+  function escapeHtml(str) {
+    var d = document.createElement("div");
+    d.textContent = str;
+    return d.innerHTML;
+  }
+
+  function computeCompletionSnapshot() {
+    var typed = typingEl.value;
+    var elapsed = Date.now() - startedAt;
+    var correct = typed.length;
+    var accNum =
+      correct + errorCount === 0
+        ? 100
+        : Math.round((correct / (correct + errorCount)) * 1000) / 10;
+    var minutes = elapsed / 60000;
+    var cpm = minutes > 0 ? Math.round(correct / minutes) : 0;
+    var wpm = minutes > 0 ? Math.round((correct / 5) / minutes) : 0;
+    return {
+      when: new Date().toLocaleTimeString("ru-RU", {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      }),
+      mode: activeModeLabel,
+      cpm: cpm,
+      wpm: wpm,
+      acc: accNum + "%",
+      duration: formatTime(elapsed),
+      errs: errorCount,
+    };
+  }
+
+  function appendHistoryRow(row) {
+    var emptyEl = document.getElementById("history-empty");
+    if (emptyEl) emptyEl.hidden = true;
+    var tbody = document.getElementById("history-tbody");
+    if (!tbody) return;
+    var tr = document.createElement("tr");
+    tr.innerHTML =
+      "<td>" +
+      escapeHtml(row.when) +
+      "</td><td>" +
+      escapeHtml(row.mode) +
+      "</td><td>" +
+      row.cpm +
+      "</td><td>" +
+      row.wpm +
+      "</td><td>" +
+      escapeHtml(row.acc) +
+      "</td><td>" +
+      escapeHtml(row.duration) +
+      "</td><td>" +
+      row.errs +
+      "</td>";
+    tbody.insertBefore(tr, tbody.firstChild);
+  }
+
+  function updateStats() {
+    var typed = typingEl.value;
+    if (!startedAt) {
+      cpmEl.textContent = "0";
+      wpmEl.textContent = "0";
+      accEl.textContent = "100%";
+      timeEl.textContent = "0:00";
+      errsEl.textContent = "0";
+      return;
+    }
+    var elapsed = Date.now() - startedAt;
+    timeEl.textContent = formatTime(elapsed);
+
+    var correct = typed.length;
+    var acc =
+      typed.length + errorCount === 0
+        ? 100
+        : Math.round(
+            (correct / (typed.length + errorCount)) * 1000
+          ) / 10;
+    accEl.textContent = acc + "%";
+
+    var minutes = elapsed / 60000;
+    var cpm = minutes > 0 ? Math.round(correct / minutes) : 0;
+    var wpm = minutes > 0 ? Math.round((correct / 5) / minutes) : 0;
+    cpmEl.textContent = String(cpm);
+    wpmEl.textContent = String(wpm);
+
+    errsEl.textContent = String(errorCount);
+  }
+
+  function resetSession() {
+    runCompleteRecorded = false;
+    startedAt = null;
+    errorCount = 0;
+    prevTyped = "";
+    typingEl.value = "";
+    updateStats();
+    updateHighlight();
+  }
+
+  function applyText(title, text, modeLabel) {
+    if (typeof modeLabel === "string" && modeLabel.length) {
+      activeModeLabel = modeLabel;
+    }
+    target = text;
+    titleEl.textContent = title;
+    resetSession();
+    renderReference();
+    typingEl.focus();
+  }
+
+  function fetchOneRandomArticle() {
+    return fetch(WIKI_SUMMARY, { mode: "cors" }).then(function (r) {
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return r.json();
+    });
+  }
+
+  function loadFromWiki() {
+    fetchErrorEl.hidden = true;
+    document.body.classList.add("loading");
+    btnText.disabled = true;
+    btnDigits.disabled = true;
+    btnBigrams.disabled = true;
+    btnTrimms.disabled = true;
+    btnChunks.disabled = true;
+
+    var attempt = function (left) {
+      if (left <= 0) return Promise.resolve(null);
+      return fetchOneRandomArticle()
+        .then(function (data) {
+          var extract = data.extract || "";
+          if (!extract) return attempt(left - 1);
+          var normalized = normalizeText(extract);
+          var snippet = trimToLength(normalized, 420);
+          if (!isOnlyEnglishLetters(snippet)) return attempt(left - 1);
+          return {
+            title: data.title || "Article",
+            snippet: snippet,
+          };
+        })
+        .catch(function () {
+          return attempt(left - 1);
+        });
+    };
+
+    attempt(MAX_WIKI_ATTEMPTS)
+      .then(function (ok) {
+        if (ok) {
+          applyText(ok.title, ok.snippet, "Текст");
+        } else {
+          var fb = pickFallback();
+          fetchErrorEl.textContent =
+            "Не удалось подобрать статью только с латинскими буквами или сеть недоступна — показан запасной текст.";
+          fetchErrorEl.hidden = false;
+          applyText(fb.title, normalizeText(fb.extract), "Текст");
+        }
+      })
+      .finally(function () {
+        document.body.classList.remove("loading");
+        btnText.disabled = false;
+        btnDigits.disabled = false;
+        btnBigrams.disabled = false;
+        btnTrimms.disabled = false;
+        btnChunks.disabled = false;
+      });
+  }
+
+  typingEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Tab" || e.key === "Escape") return;
+  });
+
+  typingEl.addEventListener("input", function () {
+    var oldVal = prevTyped;
+    var newVal = typingEl.value;
+
+    if (newVal.length < oldVal.length) {
+      prevTyped = newVal;
+      if (startedAt === null && newVal.length > 0) {
+        startedAt = Date.now();
+      }
+      updateHighlight();
+      updateStats();
+      if (newVal !== target || !target.length) {
+        runCompleteRecorded = false;
+      } else if (
+        newVal === target &&
+        target.length > 0 &&
+        startedAt &&
+        !runCompleteRecorded
+      ) {
+        runCompleteRecorded = true;
+        appendHistoryRow(computeCompletionSnapshot());
+      }
+      if (newVal === target && target.length > 0) typingEl.blur();
+      return;
+    }
+
+    if (newVal.length > target.length) {
+      typingEl.value = oldVal;
+      return;
+    }
+
+    if (newVal === oldVal) return;
+
+    var added = newVal.slice(oldVal.length);
+    var pos = oldVal.length;
+    var built = oldVal;
+    var hadError = false;
+
+    for (var k = 0; k < added.length; k++) {
+      var ch = added[k];
+      if (ch === target[pos]) {
+        built += ch;
+        pos++;
+      } else {
+        hadError = true;
+        errorCount++;
+        break;
+      }
+    }
+
+    typingEl.value = built;
+    prevTyped = built;
+
+    if (hadError) {
+      playErrorSound();
+      flashCurrentError();
+    } else if (added.length > 0) {
+      if (startedAt === null) startedAt = Date.now();
+      playKeySound();
+    }
+
+    updateHighlight();
+    updateStats();
+
+    if (built !== target || !target.length) {
+      runCompleteRecorded = false;
+    } else if (
+      built === target &&
+      target.length > 0 &&
+      startedAt &&
+      !runCompleteRecorded
+    ) {
+      runCompleteRecorded = true;
+      appendHistoryRow(computeCompletionSnapshot());
+    }
+
+    if (built === target && target.length > 0) {
+      typingEl.blur();
+    }
+  });
+
+  btnText.addEventListener("click", function () {
+    setSelectedModeButton(btnText);
+    setModeHint("wiki");
+    loadFromWiki();
+  });
+
+  btnDigits.addEventListener("click", function () {
+    setSelectedModeButton(btnDigits);
+    setModeHint("digits");
+    loadDigits();
+  });
+
+  btnBigrams.addEventListener("click", function () {
+    setSelectedModeButton(btnBigrams);
+    setModeHint("bigrams");
+    loadBigrams();
+  });
+
+  btnTrimms.addEventListener("click", function () {
+    setSelectedModeButton(btnTrimms);
+    setModeHint("trimms");
+    loadTrimms();
+  });
+
+  btnChunks.addEventListener("click", function () {
+    setSelectedModeButton(btnChunks);
+    setModeHint("chunks");
+    loadChunks();
+  });
+
+  setModeHint("wiki");
+  loadFromWiki();
+})();
+  </script>
+</body>
+</html>
