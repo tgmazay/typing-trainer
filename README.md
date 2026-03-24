@@ -25,12 +25,13 @@ For best results with live Wikipedia text, use a **recent Chromium, Firefox, or 
 | Button (UI) | Description |
 |-------------|-------------|
 | **Текст** | Loads a random excerpt from [Simple English Wikipedia](https://simple.wikipedia.org) via the REST API (`/api/rest_v1/page/random/summary`). Snippets are trimmed (~420 chars) and **rejected** if any Unicode letter is not ASCII `A–Z` / `a–z` (digits and punctuation are allowed). Up to **20** random articles may be tried before giving up. |
-| **Цифры** | **36** blocks of **4** random digits, separated by spaces. |
+| **Цифры** | Fixed two-digit pair drills: **56↔65**, **78↔87**, **12↔21**, **90↔09**, **34↔43** — each pair alternates **10** times, space-separated (100 tokens total). |
+| **Числа** | **36** blocks of **4** random digits, separated by spaces. |
 | **Биграммы** | **80** random bigrams from a pool of **40** common English letter pairs, space-separated. |
 | **Триммы** | **40** random fragments from a pool of **40** common English trigram-like chunks (mostly 3–4 letters), space-separated. |
 | **Связки** | **40** random fragments from a pool of **40** longer English letter clusters (rolls / morphemes), space-separated. |
 
-Constants such as `DIGITS_COUNT`, `BIGRAMS`, `TRIMMS`, `CHUNKS`, and `MAX_WIKI_ATTEMPTS` live at the top of the `<script>` block in `index.html` if you want to tune content.
+Tuning knobs in `index.html` (inside the main `<script>` block) include: `MAX_WIKI_ATTEMPTS`, `FALLBACK`, `DIGITS_PAIR_SECTIONS`, `DIGITS_PAIR_REPEAT`, `NUMBERS_BLOCK_LEN`, `NUMBERS_COUNT`, the `BIGRAMS` / `TRIMMS` / `CHUNKS` pools plus their `*_COUNT` and `*_SEP` values, and `WIKI_SUMMARY` if you point the app at another compatible API.
 
 ## Wikipedia, CORS, and offline behavior
 
@@ -48,9 +49,9 @@ If the network fails, CORS blocks the request (e.g. some **`file://`** setups wi
 ## File layout
 
 ```
-html/
-├── index.html    # Full app: structure, styles, logic
-└── README.md     # This file
+typing-trainer/    # project root (name may differ)
+├── index.html     # Full app: structure, styles, logic
+└── README.md      # This file
 ```
 
 ## License

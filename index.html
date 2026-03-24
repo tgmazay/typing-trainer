@@ -406,6 +406,7 @@
   <div class="actions" role="toolbar" aria-label="Режимы заданий">
     <button type="button" id="btn-text" class="is-selected" aria-pressed="true">Текст</button>
     <button type="button" id="btn-digits" aria-pressed="false">Цифры</button>
+    <button type="button" id="btn-numbers" aria-pressed="false">Числа</button>
     <button type="button" id="btn-bigrams" aria-pressed="false">Биграммы</button>
     <button type="button" id="btn-trimms" aria-pressed="false">Триммы</button>
     <button type="button" id="btn-chunks" aria-pressed="false">Связки</button>
@@ -455,6 +456,7 @@
   var typingEl = document.getElementById("typing");
   var btnText = document.getElementById("btn-text");
   var btnDigits = document.getElementById("btn-digits");
+  var btnNumbers = document.getElementById("btn-numbers");
   var btnBigrams = document.getElementById("btn-bigrams");
   var btnTrimms = document.getElementById("btn-trimms");
   var btnChunks = document.getElementById("btn-chunks");
@@ -466,7 +468,9 @@
     wiki:
       'Текст подгружается c <a href="https://simple.wikipedia.org" target="_blank" rel="noopener">Simple English Wikipedia</a> (берутся только отрывки без «чужих» алфавитов в буквах). Неверный символ не засчитывается — нужно нажать правильную клавишу. Если сеть или подбор не удались — встроенные отрывки.',
     digits:
-      "Случайные блоки цифр (через пробел) для тренировки ряда чисел и numpad. Неверный символ не пишется в поле — сначала нажмите верную цифру; звук и красная вспышка подсказывают ошибку.",
+      "Фиксированные пары двузначных чисел (56↔65, 78↔87, 12↔21, 90↔09, 34↔43) — по 10 чередований на каждую пару, через пробел. Как в режиме «Числа»: неверная цифра не пишется в поле.",
+    numbers:
+      "Случайные числа из цифр (через пробел) для тренировки ряда и numpad. Неверный символ не пишется в поле — сначала нажмите верную цифру; звук и красная вспышка подсказывают ошибку.",
     bigrams:
       "Восемьдесят случайных английских биграмм из пула частых пар букв. Неверный символ не засчитывается, пока не нажмёте нужную клавишу.",
     trimms:
@@ -491,8 +495,17 @@
     el.setAttribute("aria-pressed", "true");
   }
 
-  var DIGITS_BLOCK_LEN = 4;
-  var DIGITS_COUNT = 36;
+  var DIGITS_PAIR_SECTIONS = [
+    ["56", "65"],
+    ["78", "87"],
+    ["12", "21"],
+    ["90", "09"],
+    ["34", "43"],
+  ];
+  var DIGITS_PAIR_REPEAT = 10;
+
+  var NUMBERS_BLOCK_LEN = 4;
+  var NUMBERS_COUNT = 36;
 
   var BIGRAMS = [
     "th",
@@ -734,14 +747,15 @@
     return { title: "Встроенный текст", extract: FALLBACK[i] };
   }
 
-  function generateDigitsSequence() {
+  function generateDigitsPairsSequence() {
     var parts = [];
-    for (var i = 0; i < DIGITS_COUNT; i++) {
-      var s = "";
-      for (var j = 0; j < DIGITS_BLOCK_LEN; j++) {
-        s += String(Math.floor(Math.random() * 10));
+    for (var s = 0; s < DIGITS_PAIR_SECTIONS.length; s++) {
+      var pair = DIGITS_PAIR_SECTIONS[s];
+      var a = pair[0];
+      var b = pair[1];
+      for (var r = 0; r < DIGITS_PAIR_REPEAT; r++) {
+        parts.push(a, b);
       }
-      parts.push(s);
     }
     return parts.join(" ");
   }
@@ -750,12 +764,37 @@
     fetchErrorEl.hidden = true;
     applyText(
       "Цифры · " +
-        DIGITS_COUNT +
-        " блоков по " +
-        DIGITS_BLOCK_LEN +
-        " цифры (через пробел)",
-      generateDigitsSequence(),
+        DIGITS_PAIR_SECTIONS.length +
+        " пар × по " +
+        DIGITS_PAIR_REPEAT +
+        " чередований (через пробел)",
+      generateDigitsPairsSequence(),
       "Цифры"
+    );
+  }
+
+  function generateNumbersSequence() {
+    var parts = [];
+    for (var i = 0; i < NUMBERS_COUNT; i++) {
+      var s = "";
+      for (var j = 0; j < NUMBERS_BLOCK_LEN; j++) {
+        s += String(Math.floor(Math.random() * 10));
+      }
+      parts.push(s);
+    }
+    return parts.join(" ");
+  }
+
+  function loadNumbers() {
+    fetchErrorEl.hidden = true;
+    applyText(
+      "Числа · " +
+        NUMBERS_COUNT +
+        " блоков по " +
+        NUMBERS_BLOCK_LEN +
+        " цифры (через пробел)",
+      generateNumbersSequence(),
+      "Числа"
     );
   }
 
@@ -954,6 +993,7 @@
     document.body.classList.add("loading");
     btnText.disabled = true;
     btnDigits.disabled = true;
+    btnNumbers.disabled = true;
     btnBigrams.disabled = true;
     btnTrimms.disabled = true;
     btnChunks.disabled = true;
@@ -993,6 +1033,7 @@
         document.body.classList.remove("loading");
         btnText.disabled = false;
         btnDigits.disabled = false;
+        btnNumbers.disabled = false;
         btnBigrams.disabled = false;
         btnTrimms.disabled = false;
         btnChunks.disabled = false;
@@ -1099,6 +1140,12 @@
     setSelectedModeButton(btnDigits);
     setModeHint("digits");
     loadDigits();
+  });
+
+  btnNumbers.addEventListener("click", function () {
+    setSelectedModeButton(btnNumbers);
+    setModeHint("numbers");
+    loadNumbers();
   });
 
   btnBigrams.addEventListener("click", function () {
