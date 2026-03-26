@@ -377,6 +377,54 @@
       color: var(--muted);
       line-height: 1.45;
     }
+
+    .sound-footer {
+      width: 100%;
+      max-width: 1520px;
+      margin: 1.5rem auto 0;
+      padding: 0.85rem 1rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 0.65rem 1rem;
+      background: var(--surface);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+    }
+
+    .sound-footer label {
+      font-size: 0.85rem;
+      color: var(--muted);
+      letter-spacing: 0.03em;
+    }
+
+    .sound-footer select {
+      font-family: var(--font);
+      font-size: 0.95rem;
+      font-weight: 500;
+      padding: 0.5rem 2rem 0.5rem 0.85rem;
+      border-radius: 10px;
+      border: 1px solid rgba(94, 184, 255, 0.35);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      min-width: 12rem;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238b9cb3' d='M1 1.5L6 6l5-4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.65rem center;
+    }
+
+    .sound-footer select:hover {
+      border-color: rgba(94, 184, 255, 0.55);
+    }
+
+    .sound-footer select:focus-visible {
+      outline: 2px solid var(--current);
+      outline-offset: 2px;
+    }
   </style>
 </head>
 <body>
@@ -436,6 +484,25 @@
     </div>
   </aside>
   </div>
+
+  <footer class="sound-footer" aria-label="Звук при наборе">
+    <label for="key-sound-select">Звук клавиш</label>
+    <select id="key-sound-select" aria-describedby="key-sound-hint">
+      <option value="default">Базовый</option>
+      <option value="cherry-blue">Cherry Blue</option>
+      <option value="cherry-brown">Cherry Brown</option>
+      <option value="holy-panda" selected>Holy Panda</option>
+      <option value="silent">Тихий (silent)</option>
+      <option value="ibm-model-m">IBM Model M</option>
+      <option value="ibm-model-f">IBM Model F</option>
+      <option value="typewriter-standard">Пишущая машинка</option>
+      <option value="typewriter-vintage">Пишмаш: винтаж</option>
+      <option value="typewriter-portable">Пишмаш: портатив</option>
+    </select>
+    <span id="key-sound-hint" class="visually-hidden">
+      Профиль щелчка Web Audio при верном нажатии; выбор сохраняется в этом браузере.
+    </span>
+  </footer>
 
   <script>
 (function () {
@@ -621,6 +688,690 @@
   var activeModeLabel = "Текст";
   var runCompleteRecorded = false;
 
+  function KeyboardSound() {
+    this.ctx = null;
+    this.noiseBuffer = null;
+    this.metalRingBuffer = null;
+    this.isInitialized = false;
+    this.params = {
+      oscFreqStart: 900,
+      oscFreqEnd: 450,
+      oscDuration: 0.05,
+      oscVolume: 0.08,
+      clickVolume: 0.35,
+      clickDuration: 0.025,
+      clickFilterFreq: 2200,
+      clickFilterQ: 3.5,
+      thumpVolume: 0.15,
+      thumpFreq: 180,
+      thumpDuration: 0.04,
+      metalRingVolume: 0,
+      metalRingFreq: 4500,
+      metalRingDuration: 0.12,
+      metalRingDecay: 0.08,
+    };
+    this._defaultParams = {};
+    var dp;
+    for (dp in this.params) {
+      if (Object.prototype.hasOwnProperty.call(this.params, dp)) {
+        this._defaultParams[dp] = this.params[dp];
+      }
+    }
+  }
+
+  KeyboardSound.prototype.ensureAudio = function () {
+    var self = this;
+    if (self.isInitialized) {
+      return Promise.resolve();
+    }
+    return new Promise(function (resolve) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      self.ctx = new Ctx();
+      self.noiseBuffer = self.createNoiseBuffer(0.03);
+      self.metalRingBuffer = self.createMetalRingBuffer(0.2);
+      self.isInitialized = true;
+      resolve();
+    });
+  };
+
+  KeyboardSound.prototype.createMetalRingBuffer = function (duration) {
+    var sampleRate = this.ctx.sampleRate;
+    var buffer = this.ctx.createBuffer(1, sampleRate * duration, sampleRate);
+    var data = buffer.getChannelData(0);
+    var i;
+    for (i = 0; i < data.length; i++) {
+      var tSec = i / sampleRate;
+      var envelope = Math.exp(-tSec * 15);
+      var sine = Math.sin(tSec * 4000 * Math.PI * 2);
+      data[i] = sine * envelope * 0.3;
+    }
+    return buffer;
+  };
+
+  KeyboardSound.prototype.createNoiseBuffer = function (duration) {
+    var sampleRate = this.ctx.sampleRate;
+    var buffer = this.ctx.createBuffer(1, sampleRate * duration, sampleRate);
+    var data = buffer.getChannelData(0);
+    var i;
+    for (i = 0; i < data.length; i++) {
+      var white = Math.random() * 2 - 1;
+      data[i] = (0.5 * white + 0.3 * (Math.random() * 2 - 1)) * 0.4;
+    }
+    return buffer;
+  };
+
+  KeyboardSound.prototype.play = function () {
+    var self = this;
+    return self.ensureAudio().then(function () {
+      if (self.ctx.state === "suspended") {
+        return self.ctx.resume();
+      }
+    }).then(function () {
+      var t = self.ctx.currentTime;
+      var p = self.params;
+      var master = self.ctx.createGain();
+      master.gain.setValueAtTime(1, t);
+      master.connect(self.ctx.destination);
+
+      var osc = self.ctx.createOscillator();
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(p.oscFreqStart, t);
+      osc.frequency.exponentialRampToValueAtTime(
+        p.oscFreqEnd,
+        t + p.oscDuration * 0.6
+      );
+      var oscGain = self.ctx.createGain();
+      oscGain.gain.setValueAtTime(0, t);
+      oscGain.gain.linearRampToValueAtTime(p.oscVolume, t + 0.001);
+      oscGain.gain.exponentialRampToValueAtTime(0.01, t + p.oscDuration);
+      osc.connect(oscGain);
+      oscGain.connect(master);
+      osc.start(t);
+      osc.stop(t + p.oscDuration + 0.01);
+
+      var noise = self.ctx.createBufferSource();
+      noise.buffer = self.noiseBuffer;
+      var clickFilter = self.ctx.createBiquadFilter();
+      clickFilter.type = "bandpass";
+      clickFilter.frequency.value = p.clickFilterFreq;
+      clickFilter.Q.value = p.clickFilterQ;
+      var clickGain = self.ctx.createGain();
+      clickGain.gain.setValueAtTime(0, t);
+      clickGain.gain.linearRampToValueAtTime(p.clickVolume, t + 0.0005);
+      clickGain.gain.exponentialRampToValueAtTime(0.01, t + p.clickDuration);
+      noise.connect(clickFilter);
+      clickFilter.connect(clickGain);
+      clickGain.connect(master);
+      noise.start(t);
+      noise.stop(t + p.clickDuration + 0.01);
+
+      var thump = self.ctx.createOscillator();
+      thump.type = "triangle";
+      thump.frequency.setValueAtTime(p.thumpFreq, t);
+      thump.frequency.exponentialRampToValueAtTime(
+        p.thumpFreq * 0.5,
+        t + p.thumpDuration
+      );
+      var thumpGain = self.ctx.createGain();
+      thumpGain.gain.setValueAtTime(0, t);
+      thumpGain.gain.linearRampToValueAtTime(p.thumpVolume, t + 0.002);
+      thumpGain.gain.exponentialRampToValueAtTime(0.01, t + p.thumpDuration);
+      var thumpFilter = self.ctx.createBiquadFilter();
+      thumpFilter.type = "lowpass";
+      thumpFilter.frequency.value = 400;
+      thump.connect(thumpFilter);
+      thumpFilter.connect(thumpGain);
+      thumpGain.connect(master);
+      thump.start(t);
+      thump.stop(t + p.thumpDuration + 0.01);
+
+      if (p.metalRingVolume > 0 && self.metalRingBuffer) {
+        var metal = self.ctx.createBufferSource();
+        metal.buffer = self.metalRingBuffer;
+        var metalFilter = self.ctx.createBiquadFilter();
+        metalFilter.type = "bandpass";
+        metalFilter.frequency.value = p.metalRingFreq;
+        metalFilter.Q.value = 8;
+        var metalGain = self.ctx.createGain();
+        metalGain.gain.setValueAtTime(0, t);
+        metalGain.gain.linearRampToValueAtTime(p.metalRingVolume, t + 0.003);
+        metalGain.gain.exponentialRampToValueAtTime(
+          0.01,
+          t + p.metalRingDuration
+        );
+        metal.connect(metalFilter);
+        metalFilter.connect(metalGain);
+        metalGain.connect(master);
+        metal.start(t);
+        metal.stop(t + p.metalRingDuration + 0.01);
+      }
+
+      window.setTimeout(function () {
+        master.disconnect();
+      }, 220);
+    });
+  };
+
+  KeyboardSound.prototype.restoreDefaults = function () {
+    var key;
+    for (key in this._defaultParams) {
+      if (Object.prototype.hasOwnProperty.call(this._defaultParams, key)) {
+        this.params[key] = this._defaultParams[key];
+      }
+    }
+  };
+
+  KeyboardSound.prototype.setPreset = function (presetName) {
+    var presets = {
+      "cherry-blue": {
+        oscFreqStart: 950,
+        oscFreqEnd: 480,
+        oscDuration: 0.045,
+        clickVolume: 0.4,
+        clickDuration: 0.022,
+        clickFilterFreq: 2400,
+        clickFilterQ: 4,
+        thumpVolume: 0.15,
+        thumpFreq: 180,
+        thumpDuration: 0.04,
+        metalRingVolume: 0,
+      },
+      "cherry-brown": {
+        oscFreqStart: 850,
+        oscFreqEnd: 420,
+        oscDuration: 0.05,
+        clickVolume: 0.25,
+        clickDuration: 0.028,
+        clickFilterFreq: 1800,
+        clickFilterQ: 2.5,
+        thumpVolume: 0.12,
+        thumpFreq: 160,
+        thumpDuration: 0.04,
+        metalRingVolume: 0,
+      },
+      "holy-panda": {
+        oscFreqStart: 900,
+        oscFreqEnd: 450,
+        oscDuration: 0.055,
+        clickVolume: 0.45,
+        clickDuration: 0.025,
+        clickFilterFreq: 2200,
+        clickFilterQ: 3.5,
+        thumpVolume: 0.18,
+        thumpFreq: 170,
+        thumpDuration: 0.045,
+        metalRingVolume: 0,
+      },
+      silent: {
+        oscFreqStart: 700,
+        oscFreqEnd: 350,
+        oscDuration: 0.04,
+        clickVolume: 0.15,
+        clickDuration: 0.02,
+        clickFilterFreq: 1500,
+        clickFilterQ: 2,
+        thumpVolume: 0.08,
+        thumpFreq: 140,
+        thumpDuration: 0.03,
+        metalRingVolume: 0,
+      },
+      "ibm-model-m": {
+        oscFreqStart: 650,
+        oscFreqEnd: 280,
+        oscDuration: 0.08,
+        clickVolume: 0.55,
+        clickDuration: 0.035,
+        clickFilterFreq: 3200,
+        clickFilterQ: 5,
+        thumpVolume: 0.25,
+        thumpFreq: 120,
+        thumpDuration: 0.06,
+        metalRingVolume: 0.18,
+        metalRingFreq: 4500,
+        metalRingDuration: 0.12,
+      },
+      "ibm-model-f": {
+        oscFreqStart: 600,
+        oscFreqEnd: 250,
+        oscDuration: 0.09,
+        clickVolume: 0.6,
+        clickDuration: 0.04,
+        clickFilterFreq: 3500,
+        clickFilterQ: 6,
+        thumpVolume: 0.3,
+        thumpFreq: 100,
+        thumpDuration: 0.07,
+        metalRingVolume: 0.25,
+        metalRingFreq: 5000,
+        metalRingDuration: 0.15,
+      },
+    };
+    if (presetName === "default") {
+      this.restoreDefaults();
+      return;
+    }
+    if (!presets[presetName]) {
+      return;
+    }
+    this.restoreDefaults();
+    var preset = presets[presetName];
+    var k;
+    for (k in preset) {
+      if (Object.prototype.hasOwnProperty.call(preset, k)) {
+        this.params[k] = preset[k];
+      }
+    }
+  };
+
+  function TypewriterSound() {
+    this.ctx = null;
+    this.noiseBuffer = null;
+    this.metalRingBuffer = null;
+    this.bellBuffer = null;
+    this.carriageBuffer = null;
+    this.isInitialized = false;
+    this.params = {
+      impactVolume: 0.7,
+      impactDuration: 0.04,
+      impactFilterFreq: 2800,
+      impactFilterQ: 4,
+      metalVolume: 0.25,
+      metalFreq: 1800,
+      metalDuration: 0.15,
+      mechVolume: 0.2,
+      mechFreq: 400,
+      mechDuration: 0.06,
+      paperVolume: 0.15,
+      paperFreq: 600,
+      paperDuration: 0.03,
+      randomPitch: 0.08,
+      randomVolume: 0.12,
+      randomTiming: 0.003,
+    };
+    this._defaultParams = {};
+    var td;
+    for (td in this.params) {
+      if (Object.prototype.hasOwnProperty.call(this.params, td)) {
+        this._defaultParams[td] = this.params[td];
+      }
+    }
+  }
+
+  TypewriterSound.prototype.ensureAudio = function () {
+    var self = this;
+    if (self.isInitialized) {
+      return Promise.resolve();
+    }
+    return new Promise(function (resolve) {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      self.ctx = new Ctx();
+      self.noiseBuffer = self.createNoiseBuffer(0.05);
+      self.metalRingBuffer = self.createMetalRingBuffer(0.2);
+      self.bellBuffer = self.createBellBuffer(0.4);
+      self.carriageBuffer = self.createCarriageBuffer(0.3);
+      self.isInitialized = true;
+      resolve();
+    });
+  };
+
+  TypewriterSound.prototype.createNoiseBuffer = function (duration) {
+    var sampleRate = this.ctx.sampleRate;
+    var buffer = this.ctx.createBuffer(1, sampleRate * duration, sampleRate);
+    var data = buffer.getChannelData(0);
+    var i;
+    for (i = 0; i < data.length; i++) {
+      var white = Math.random() * 2 - 1;
+      data[i] = white * 0.5;
+    }
+    return buffer;
+  };
+
+  TypewriterSound.prototype.createMetalRingBuffer = function (duration) {
+    var sampleRate = this.ctx.sampleRate;
+    var buffer = this.ctx.createBuffer(1, sampleRate * duration, sampleRate);
+    var data = buffer.getChannelData(0);
+    var i;
+    for (i = 0; i < data.length; i++) {
+      var tSec = i / sampleRate;
+      var envelope = Math.exp(-tSec * 8);
+      var sine = Math.sin(tSec * 1800 * Math.PI * 2);
+      var harmonic = Math.sin(tSec * 3600 * Math.PI * 2) * 0.3;
+      data[i] = (sine + harmonic) * envelope * 0.4;
+    }
+    return buffer;
+  };
+
+  TypewriterSound.prototype.createBellBuffer = function (duration) {
+    var sampleRate = this.ctx.sampleRate;
+    var buffer = this.ctx.createBuffer(1, sampleRate * duration, sampleRate);
+    var data = buffer.getChannelData(0);
+    var i;
+    for (i = 0; i < data.length; i++) {
+      var tSec = i / sampleRate;
+      var envelope = Math.exp(-tSec * 4);
+      var sine = Math.sin(tSec * 2400 * Math.PI * 2);
+      var harmonic = Math.sin(tSec * 4800 * Math.PI * 2) * 0.4;
+      var subharmonic = Math.sin(tSec * 1200 * Math.PI * 2) * 0.2;
+      data[i] = (sine + harmonic + subharmonic) * envelope * 0.5;
+    }
+    return buffer;
+  };
+
+  TypewriterSound.prototype.createCarriageBuffer = function (duration) {
+    var sampleRate = this.ctx.sampleRate;
+    var buffer = this.ctx.createBuffer(1, sampleRate * duration, sampleRate);
+    var data = buffer.getChannelData(0);
+    var i;
+    for (i = 0; i < data.length; i++) {
+      var tSec = i / sampleRate;
+      var progress = tSec / duration;
+      var slide = Math.sin(tSec * 150 * Math.PI * 2) * (1 - progress);
+      var click =
+        progress > 0.85
+          ? Math.sin(tSec * 800 * Math.PI * 2) * (progress - 0.85) * 3
+          : 0;
+      var envelope = Math.exp(-tSec * 3);
+      data[i] = (slide * 0.6 + click * 0.4) * envelope * 0.5;
+    }
+    return buffer;
+  };
+
+  TypewriterSound.prototype.randomOffset = function () {
+    return (Math.random() - 0.5) * this.params.randomTiming;
+  };
+
+  TypewriterSound.prototype.playKey = function () {
+    var self = this;
+    return self.ensureAudio().then(function () {
+      if (self.ctx.state === "suspended") {
+        return self.ctx.resume();
+      }
+    }).then(function () {
+      var t = self.ctx.currentTime + self.randomOffset();
+      var p = self.params;
+      var pitchVar = 1 + (Math.random() - 0.5) * p.randomPitch;
+      var volVar = 1 + (Math.random() - 0.5) * p.randomVolume;
+      var master = self.ctx.createGain();
+      master.gain.setValueAtTime(1, t);
+      master.connect(self.ctx.destination);
+
+      var impact = self.ctx.createBufferSource();
+      impact.buffer = self.noiseBuffer;
+      var impactFilter = self.ctx.createBiquadFilter();
+      impactFilter.type = "bandpass";
+      impactFilter.frequency.value = p.impactFilterFreq * pitchVar;
+      impactFilter.Q.value = p.impactFilterQ;
+      var impactGain = self.ctx.createGain();
+      impactGain.gain.setValueAtTime(0, t);
+      impactGain.gain.linearRampToValueAtTime(
+        p.impactVolume * volVar,
+        t + 0.0003
+      );
+      impactGain.gain.exponentialRampToValueAtTime(0.01, t + p.impactDuration);
+      impact.connect(impactFilter);
+      impactFilter.connect(impactGain);
+      impactGain.connect(master);
+      impact.start(t);
+      impact.stop(t + p.impactDuration + 0.01);
+
+      var metal = self.ctx.createBufferSource();
+      metal.buffer = self.metalRingBuffer;
+      var metalFilter = self.ctx.createBiquadFilter();
+      metalFilter.type = "bandpass";
+      metalFilter.frequency.value = p.metalFreq * pitchVar;
+      metalFilter.Q.value = 6;
+      var metalGain = self.ctx.createGain();
+      metalGain.gain.setValueAtTime(0, t);
+      metalGain.gain.linearRampToValueAtTime(p.metalVolume * volVar, t + 0.002);
+      metalGain.gain.exponentialRampToValueAtTime(0.01, t + p.metalDuration);
+      metal.connect(metalFilter);
+      metalFilter.connect(metalGain);
+      metalGain.connect(master);
+      metal.start(t);
+      metal.stop(t + p.metalDuration + 0.01);
+
+      var mech = self.ctx.createOscillator();
+      mech.type = "square";
+      mech.frequency.setValueAtTime(p.mechFreq * pitchVar, t);
+      mech.frequency.exponentialRampToValueAtTime(
+        p.mechFreq * 0.4 * pitchVar,
+        t + p.mechDuration
+      );
+      var mechGain = self.ctx.createGain();
+      mechGain.gain.setValueAtTime(0, t);
+      mechGain.gain.linearRampToValueAtTime(p.mechVolume * volVar, t + 0.001);
+      mechGain.gain.exponentialRampToValueAtTime(0.01, t + p.mechDuration);
+      var mechFilter = self.ctx.createBiquadFilter();
+      mechFilter.type = "lowpass";
+      mechFilter.frequency.value = 800;
+      mech.connect(mechFilter);
+      mechFilter.connect(mechGain);
+      mechGain.connect(master);
+      mech.start(t);
+      mech.stop(t + p.mechDuration + 0.01);
+
+      var paper = self.ctx.createOscillator();
+      paper.type = "triangle";
+      paper.frequency.setValueAtTime(p.paperFreq * pitchVar, t);
+      var paperGain = self.ctx.createGain();
+      paperGain.gain.setValueAtTime(0, t);
+      paperGain.gain.linearRampToValueAtTime(p.paperVolume * volVar, t + 0.001);
+      paperGain.gain.exponentialRampToValueAtTime(0.01, t + p.paperDuration);
+      var paperFilter = self.ctx.createBiquadFilter();
+      paperFilter.type = "lowpass";
+      paperFilter.frequency.value = 1000;
+      paper.connect(paperFilter);
+      paperFilter.connect(paperGain);
+      paperGain.connect(master);
+      paper.start(t);
+      paper.stop(t + p.paperDuration + 0.01);
+
+      window.setTimeout(function () {
+        master.disconnect();
+      }, 280);
+    });
+  };
+
+  TypewriterSound.prototype.playBell = function () {
+    var self = this;
+    return self.ensureAudio().then(function () {
+      if (self.ctx.state === "suspended") {
+        return self.ctx.resume();
+      }
+    }).then(function () {
+      var t = self.ctx.currentTime;
+      var bell = self.ctx.createBufferSource();
+      bell.buffer = self.bellBuffer;
+      var bellGain = self.ctx.createGain();
+      bellGain.gain.setValueAtTime(0, t);
+      bellGain.gain.linearRampToValueAtTime(0.6, t + 0.005);
+      bellGain.gain.exponentialRampToValueAtTime(0.01, t + 0.35);
+      var bellFilter = self.ctx.createBiquadFilter();
+      bellFilter.type = "highpass";
+      bellFilter.frequency.value = 1500;
+      bell.connect(bellFilter);
+      bellFilter.connect(bellGain);
+      bellGain.connect(self.ctx.destination);
+      bell.start(t);
+      bell.stop(t + 0.4);
+    });
+  };
+
+  TypewriterSound.prototype.playCarriageReturn = function () {
+    var self = this;
+    return self.ensureAudio().then(function () {
+      if (self.ctx.state === "suspended") {
+        return self.ctx.resume();
+      }
+    }).then(function () {
+      var t = self.ctx.currentTime;
+      var carriage = self.ctx.createBufferSource();
+      carriage.buffer = self.carriageBuffer;
+      var carriageGain = self.ctx.createGain();
+      carriageGain.gain.setValueAtTime(0, t);
+      carriageGain.gain.linearRampToValueAtTime(0.5, t + 0.01);
+      carriageGain.gain.exponentialRampToValueAtTime(0.01, t + 0.28);
+      var carriageFilter = self.ctx.createBiquadFilter();
+      carriageFilter.type = "bandpass";
+      carriageFilter.frequency.value = 400;
+      carriageFilter.Q.value = 2;
+      carriage.connect(carriageFilter);
+      carriageFilter.connect(carriageGain);
+      carriageGain.connect(self.ctx.destination);
+      carriage.start(t);
+      carriage.stop(t + 0.3);
+    });
+  };
+
+  TypewriterSound.prototype.restoreDefaults = function () {
+    var key;
+    for (key in this._defaultParams) {
+      if (Object.prototype.hasOwnProperty.call(this._defaultParams, key)) {
+        this.params[key] = this._defaultParams[key];
+      }
+    }
+  };
+
+  TypewriterSound.prototype.setPreset = function (presetName) {
+    var presets = {
+      "typewriter-standard": {
+        impactVolume: 0.7,
+        impactDuration: 0.04,
+        impactFilterFreq: 2800,
+        impactFilterQ: 4,
+        metalVolume: 0.25,
+        metalFreq: 1800,
+        metalDuration: 0.15,
+        mechVolume: 0.2,
+        mechFreq: 400,
+        mechDuration: 0.06,
+        paperVolume: 0.15,
+        paperFreq: 600,
+        paperDuration: 0.03,
+        randomPitch: 0.08,
+        randomVolume: 0.12,
+        randomTiming: 0.003,
+      },
+      "typewriter-vintage": {
+        impactVolume: 0.8,
+        impactDuration: 0.05,
+        impactFilterFreq: 2400,
+        impactFilterQ: 3.5,
+        metalVolume: 0.35,
+        metalFreq: 1500,
+        metalDuration: 0.2,
+        mechVolume: 0.25,
+        mechFreq: 350,
+        mechDuration: 0.07,
+        paperVolume: 0.12,
+        paperFreq: 500,
+        paperDuration: 0.04,
+        randomPitch: 0.1,
+        randomVolume: 0.15,
+        randomTiming: 0.004,
+      },
+      "typewriter-portable": {
+        impactVolume: 0.55,
+        impactDuration: 0.035,
+        impactFilterFreq: 3200,
+        impactFilterQ: 4.5,
+        metalVolume: 0.18,
+        metalFreq: 2200,
+        metalDuration: 0.12,
+        mechVolume: 0.15,
+        mechFreq: 450,
+        mechDuration: 0.05,
+        paperVolume: 0.2,
+        paperFreq: 700,
+        paperDuration: 0.025,
+        randomPitch: 0.06,
+        randomVolume: 0.1,
+        randomTiming: 0.002,
+      },
+    };
+    if (!presets[presetName]) {
+      return;
+    }
+    this.restoreDefaults();
+    var preset = presets[presetName];
+    var k;
+    for (k in preset) {
+      if (Object.prototype.hasOwnProperty.call(preset, k)) {
+        this.params[k] = preset[k];
+      }
+    }
+  };
+
+  var keyboardSound = new KeyboardSound();
+  var typewriterSound = new TypewriterSound();
+  var typewriterLineChars = 0;
+  var KEY_SOUND_STORAGE_KEY = "typing-trainer-key-sound";
+  var keySoundSelect = document.getElementById("key-sound-select");
+  var KEY_SOUND_IDS = {
+    default: true,
+    "cherry-blue": true,
+    "cherry-brown": true,
+    "holy-panda": true,
+    silent: true,
+    "ibm-model-m": true,
+    "ibm-model-f": true,
+    "typewriter-standard": true,
+    "typewriter-vintage": true,
+    "typewriter-portable": true,
+  };
+
+  function isTypewriterSoundId(id) {
+    return (
+      id === "typewriter-standard" ||
+      id === "typewriter-vintage" ||
+      id === "typewriter-portable"
+    );
+  }
+
+  function applyKeySoundPreset(id) {
+    if (isTypewriterSoundId(id)) {
+      typewriterSound.setPreset(id);
+    } else {
+      keyboardSound.setPreset(id);
+    }
+  }
+
+  function previewKeySound() {
+    var v = keySoundSelect.value;
+    if (isTypewriterSoundId(v)) {
+      return typewriterSound.ensureAudio().then(function () {
+        return typewriterSound.playKey();
+      });
+    }
+    return keyboardSound.ensureAudio().then(function () {
+      return keyboardSound.play();
+    });
+  }
+
+  function initKeySoundSelect() {
+    if (!keySoundSelect) return;
+    var saved = null;
+    try {
+      saved = localStorage.getItem(KEY_SOUND_STORAGE_KEY);
+    } catch (e) {}
+    if (saved && KEY_SOUND_IDS[saved]) {
+      keySoundSelect.value = saved;
+    }
+    applyKeySoundPreset(keySoundSelect.value);
+    keySoundSelect.addEventListener("change", function () {
+      var v = keySoundSelect.value;
+      applyKeySoundPreset(v);
+      try {
+        localStorage.setItem(KEY_SOUND_STORAGE_KEY, v);
+      } catch (e2) {}
+      previewKeySound().catch(function () {}).then(function () {
+        window.setTimeout(function () {
+          typingEl.focus();
+        }, 0);
+      });
+    });
+  }
+
   function ensureAudio() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -630,47 +1381,20 @@
     }
   }
 
-  function playKeySound() {
-    ensureAudio();
-    var ctx = audioCtx;
-    var t = ctx.currentTime;
-    var master = ctx.createGain();
-    master.gain.setValueAtTime(0.12, t);
-    master.connect(ctx.destination);
-
-    var osc = ctx.createOscillator();
-    osc.type = "sine";
-    osc.frequency.setValueAtTime(880, t);
-    osc.frequency.exponentialRampToValueAtTime(520, t + 0.04);
-    var g = ctx.createGain();
-    g.gain.setValueAtTime(0, t);
-    g.gain.linearRampToValueAtTime(1, t + 0.002);
-    g.gain.exponentialRampToValueAtTime(0.01, t + 0.06);
-    osc.connect(g);
-    g.connect(master);
-    osc.start(t);
-    osc.stop(t + 0.07);
-
-    var noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.03, ctx.sampleRate);
-    var data = noiseBuf.getChannelData(0);
-    for (var i = 0; i < data.length; i++) {
-      data[i] = (Math.random() * 2 - 1) * 0.35;
+  function playKeySound(acceptedCount) {
+    var n =
+      typeof acceptedCount === "number" && acceptedCount > 0 ? acceptedCount : 1;
+    var v = (keySoundSelect && keySoundSelect.value) || "";
+    if (isTypewriterSoundId(v)) {
+      typewriterSound.playKey().catch(function () {});
+      typewriterLineChars += n;
+      while (typewriterLineChars >= 70) {
+        typewriterLineChars -= 70;
+        typewriterSound.playBell().catch(function () {});
+      }
+    } else {
+      keyboardSound.play().catch(function () {});
     }
-    var noise = ctx.createBufferSource();
-    noise.buffer = noiseBuf;
-    var bp = ctx.createBiquadFilter();
-    bp.type = "bandpass";
-    bp.frequency.value = 1800;
-    bp.Q.value = 2;
-    var ng = ctx.createGain();
-    ng.gain.setValueAtTime(0, t);
-    ng.gain.linearRampToValueAtTime(0.45, t + 0.001);
-    ng.gain.exponentialRampToValueAtTime(0.01, t + 0.028);
-    noise.connect(bp);
-    bp.connect(ng);
-    ng.connect(master);
-    noise.start(t);
-    noise.stop(t + 0.03);
   }
 
   function playErrorSound() {
@@ -966,6 +1690,7 @@
     errorCount = 0;
     prevTyped = "";
     typingEl.value = "";
+    typewriterLineChars = 0;
     updateStats();
     updateHighlight();
   }
@@ -1042,6 +1767,10 @@
 
   typingEl.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
+      if (keySoundSelect && isTypewriterSoundId(keySoundSelect.value)) {
+        typewriterSound.playCarriageReturn().catch(function () {});
+        typewriterLineChars = 0;
+      }
       e.preventDefault();
       return;
     }
@@ -1107,7 +1836,7 @@
       flashCurrentError();
     } else if (added.length > 0) {
       if (startedAt === null) startedAt = Date.now();
-      playKeySound();
+      playKeySound(built.length - oldVal.length);
     }
 
     updateHighlight();
@@ -1129,6 +1858,15 @@
       typingEl.blur();
     }
   });
+
+  document.addEventListener(
+    "click",
+    function () {
+      keyboardSound.ensureAudio().catch(function () {});
+      typewriterSound.ensureAudio().catch(function () {});
+    },
+    { once: true }
+  );
 
   btnText.addEventListener("click", function () {
     setSelectedModeButton(btnText);
@@ -1165,6 +1903,8 @@
     setModeHint("chunks");
     loadChunks();
   });
+
+  initKeySoundSelect();
 
   setModeHint("wiki");
   loadFromWiki();
