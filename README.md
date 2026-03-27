@@ -13,12 +13,12 @@ For best results with live Wikipedia text, use a **recent Chromium, Firefox, or 
 
 ## Features
 
-- **Live statistics** — characters per minute (CPM), words per minute (WPM, 5 characters = 1 word on correct keystrokes), accuracy, elapsed time, error count.
+- **Live statistics** — characters per minute (CPM), words per minute (WPM = rounded CPM ÷ 5, treating 5 correct characters as one “word”), accuracy, elapsed time, error count. The speed timer starts when the **first correct** character is accepted; CPM/WPM use only **correct** characters in the numerator.
 - **Reference line** — large, color-coded preview: pending, current, correct, and error feedback.
 - **Strict input** — wrong characters are **not** appended; you must type the correct key to continue. A short error sound and a red flash mark mistakes.
-- **Key feedback** — subtle “click” via the **Web Audio API** when a character is accepted.
+- **Key feedback** — **Web Audio** profiles selectable in the footer: mechanical-style layers (tone + noise + thump), **IBM Model M / F** (extra metal ring), and **typewriter** presets (impact + resonance + mechanics + paper; line bell every 70 accepted characters; **Enter** plays a carriage-return sound in typewriter mode while still blocking newlines in the text). Choice is stored in **`localStorage`** for that browser.
 - **Results history** — a side table records each **completed** run (time, mode, CPM, WPM, accuracy, duration, errors). New rows appear at the top.
-- **Mode toolbar** — one button stays visually selected; the footer hint text switches per mode.
+- **Mode toolbar** — one button stays visually selected; the hint under the toolbar switches per mode.
 
 ## Training modes
 
@@ -30,8 +30,9 @@ For best results with live Wikipedia text, use a **recent Chromium, Firefox, or 
 | **Биграммы** | **80** random bigrams from a pool of **40** common English letter pairs, space-separated. |
 | **Триммы** | **40** random fragments from a pool of **40** common English trigram-like chunks (mostly 3–4 letters), space-separated. |
 | **Связки** | **40** random fragments from a pool of **40** longer English letter clusters (rolls / morphemes), space-separated. |
+| **Слова** | **40** random English words per run, drawn from the **`WORDS_TOP300` array** defined in `index.html` (full word list lives only there). Words are space-separated; entries may include apostrophes (**don’t**, **won’t**, etc.). |
 
-Tuning knobs in `index.html` (inside the main `<script>` block) include: `MAX_WIKI_ATTEMPTS`, `FALLBACK`, `DIGITS_PAIR_SECTIONS`, `DIGITS_PAIR_REPEAT`, `NUMBERS_BLOCK_LEN`, `NUMBERS_COUNT`, the `BIGRAMS` / `TRIMMS` / `CHUNKS` pools plus their `*_COUNT` and `*_SEP` values, and `WIKI_SUMMARY` if you point the app at another compatible API.
+Tuning knobs in `index.html` (inside the main `<script>` block) include: `MAX_WIKI_ATTEMPTS`, `FALLBACK`, `DIGITS_PAIR_SECTIONS`, `DIGITS_PAIR_REPEAT`, `NUMBERS_BLOCK_LEN`, `NUMBERS_COUNT`, the `BIGRAMS` / `TRIMMS` / `CHUNKS` / `WORDS_TOP300` pools plus their `*_COUNT` and `*_SEP` values (where applicable), keyboard/typewriter preset parameters on the `KeyboardSound` / `TypewriterSound` prototypes, and `WIKI_SUMMARY` if you point the app at another compatible API. To change the vocabulary for **Слова**, edit the `WORDS_TOP300` array in `index.html`.
 
 ## Wikipedia, CORS, and offline behavior
 
@@ -41,10 +42,10 @@ If the network fails, CORS blocks the request (e.g. some **`file://`** setups wi
 
 ## Technical notes
 
-- **Enter** in the typing area is ignored (newlines are not part of the exercise).
+- **Enter** in the typing area does not insert a newline (newlines are not part of the exercise); in **typewriter** sound mode it still triggers the carriage-return sample.
 - The textarea uses **`resize: vertical`** so width stays aligned with the layout.
 - **Unicode property escapes** (`\p{L}`) are used to filter Wikipedia snippets; use a browser that supports **ES2018+ RegExp** features.
-- **No persistence** — refreshing the page clears the on-screen history table.
+- **History** is not persisted across reloads; **key sound** preference is persisted via **`localStorage`**.
 
 ## File layout
 
