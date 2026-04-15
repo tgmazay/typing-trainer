@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>typing-trainer</title>
+  <title>Typing trainer</title>
   <style>
     :root {
       --bg: #0f1419;
@@ -58,18 +58,57 @@
       max-width: 920px;
     }
 
-    .main-flow > h1 {
-      max-width: none;
-      width: auto;
+    .main-header {
+      width: 100%;
+      max-width: 920px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
     }
 
-    h1 {
+    .app-heading {
       font-size: 1rem;
       font-weight: 600;
       letter-spacing: 0.04em;
       color: var(--muted);
       margin: 0;
       text-transform: uppercase;
+    }
+
+    .lang-switch {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .lang-select {
+      font-family: var(--font);
+      font-size: 0.8rem;
+      font-weight: 600;
+      padding: 0.4rem 1.75rem 0.4rem 0.65rem;
+      border-radius: 8px;
+      border: 1px solid rgba(94, 184, 255, 0.4);
+      background: var(--bg);
+      color: var(--text);
+      cursor: pointer;
+      min-width: 5.5rem;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238b9cb3' d='M1 1.5L6 6l5-4.5'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 0.5rem center;
+      transition: border-color 0.12s, color 0.12s;
+    }
+
+    .lang-select:hover {
+      border-color: rgba(94, 184, 255, 0.55);
+      color: var(--accent);
+    }
+
+    .lang-select:focus-visible {
+      outline: 2px solid var(--current);
+      outline-offset: 2px;
     }
 
     .stats {
@@ -436,81 +475,88 @@
 <body>
   <div class="app-shell">
   <div class="main-flow">
-  <h1>Клавиатурный тренажёр</h1>
+  <div class="main-header">
+    <h1 id="app-heading" class="app-heading">Typing trainer</h1>
+    <div class="lang-switch">
+      <label for="lang-select" id="lbl-lang-select" class="visually-hidden">Interface language</label>
+      <select id="lang-select" class="lang-select"></select>
+    </div>
+  </div>
 
   <div class="stats">
-    <div class="stat"><label>Знаков/мин</label><span id="cpm">0</span></div>
-    <div class="stat"><label>Слов/мин</label><span id="wpm">0</span></div>
-    <div class="stat"><label>Точность</label><span id="acc">100%</span></div>
-    <div class="stat"><label>Время</label><span id="time">0:00</span></div>
-    <div class="stat"><label>Ошибки</label><span id="errs">0</span></div>
+    <div class="stat"><label id="lbl-stat-cpm">CPM</label><span id="cpm">0</span></div>
+    <div class="stat"><label id="lbl-stat-wpm">WPM</label><span id="wpm">0</span></div>
+    <div class="stat"><label id="lbl-stat-acc">Accuracy</label><span id="acc">100%</span></div>
+    <div class="stat"><label id="lbl-stat-time">Time</label><span id="time">0:00</span></div>
+    <div class="stat"><label id="lbl-stat-errs">Errors</label><span id="errs">0</span></div>
   </div>
 
   <div class="panel">
-    <div class="reference-title">Текст: <strong id="article-title">—</strong></div>
+    <div class="reference-title"><span id="ref-prefix">Text:</span> <strong id="article-title">—</strong></div>
     <div id="reference" aria-live="polite"></div>
     <p class="error-msg" id="fetch-error" hidden></p>
   </div>
 
   <div class="input-wrap">
-    <label for="typing" class="visually-hidden">Набор текста</label>
-    <textarea id="typing" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Начните набирать здесь…"></textarea>
+    <label for="typing" class="visually-hidden" id="lbl-typing">Typing area</label>
+    <textarea id="typing" rows="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Start typing here…"></textarea>
   </div>
 
-  <div class="actions" role="toolbar" aria-label="Режимы заданий">
-    <button type="button" id="btn-text" class="is-selected" aria-pressed="true">Текст</button>
-    <button type="button" id="btn-digits" aria-pressed="false">Цифры</button>
-    <button type="button" id="btn-numbers" aria-pressed="false">Числа</button>
-    <button type="button" id="btn-bigrams" aria-pressed="false">Биграммы</button>
-    <button type="button" id="btn-trimms" aria-pressed="false">Триммы</button>
-    <button type="button" id="btn-chunks" aria-pressed="false">Связки</button>
-    <button type="button" id="btn-words" aria-pressed="false">Слова</button>
+  <div class="actions" id="actions-toolbar" role="toolbar" aria-label="Exercise modes">
+    <button type="button" id="btn-text" class="is-selected" aria-pressed="true">Text</button>
+    <button type="button" id="btn-digits" aria-pressed="false">Digits</button>
+    <button type="button" id="btn-numbers" aria-pressed="false">Numbers</button>
+    <button type="button" id="btn-bigrams" aria-pressed="false">Bigrams</button>
+    <button type="button" id="btn-trimms" aria-pressed="false">Trims</button>
+    <button type="button" id="btn-chunks" aria-pressed="false">Chunks</button>
+    <button type="button" id="btn-words" aria-pressed="false">Words</button>
   </div>
 
   <p class="hint" id="mode-hint" role="status" aria-live="polite"></p>
   </div>
 
   <aside class="history-panel" aria-labelledby="history-heading">
-    <h2 id="history-heading">Результаты попыток</h2>
+    <h2 id="history-heading">Session results</h2>
     <div class="history-scroll">
       <table>
         <thead>
           <tr>
-            <th scope="col">Когда</th>
-            <th scope="col">Режим</th>
-            <th scope="col">Зн/м</th>
-            <th scope="col">Сл/м</th>
-            <th scope="col">Точность</th>
-            <th scope="col">Время</th>
-            <th scope="col">Ошибки</th>
+            <th scope="col" id="hist-th-when">When</th>
+            <th scope="col" id="hist-th-mode">Mode</th>
+            <th scope="col" id="hist-th-cpm">CPM</th>
+            <th scope="col" id="hist-th-wpm">WPM</th>
+            <th scope="col" id="hist-th-acc">Accuracy</th>
+            <th scope="col" id="hist-th-time">Time</th>
+            <th scope="col" id="hist-th-errs">Errors</th>
           </tr>
         </thead>
         <tbody id="history-tbody"></tbody>
       </table>
-      <p class="history-empty" id="history-empty">Завершите набор текста — строка появится здесь.</p>
+      <p class="history-empty" id="history-empty">Finish typing a line — it will appear here.</p>
     </div>
   </aside>
   </div>
 
-  <footer class="sound-footer" aria-label="Звук при наборе">
-    <label for="key-sound-select">Звук клавиш</label>
+  <footer class="sound-footer" id="sound-footer" aria-label="Keypress sound">
+    <label for="key-sound-select" id="lbl-sound">Key sound</label>
     <select id="key-sound-select" aria-describedby="key-sound-hint">
-      <option value="default">Базовый</option>
+      <option value="default">Default</option>
       <option value="cherry-blue">Cherry Blue</option>
       <option value="cherry-brown">Cherry Brown</option>
       <option value="holy-panda" selected>Holy Panda</option>
-      <option value="silent">Тихий (silent)</option>
+      <option value="silent">Quiet (silent)</option>
       <option value="ibm-model-m">IBM Model M</option>
       <option value="ibm-model-f">IBM Model F</option>
-      <option value="typewriter-standard">Пишущая машинка</option>
-      <option value="typewriter-vintage">Пишмаш: винтаж</option>
-      <option value="typewriter-portable">Пишмаш: портатив</option>
+      <option value="typewriter-standard">Typewriter</option>
+      <option value="typewriter-vintage">Typewriter: vintage</option>
+      <option value="typewriter-portable">Typewriter: portable</option>
     </select>
     <span id="key-sound-hint" class="visually-hidden">
-      Профиль щелчка Web Audio при верном нажатии; выбор сохраняется в этом браузере.
+      Web Audio click profile on correct key; choice is saved in this browser.
     </span>
   </footer>
 
+<script type="application/json" id="i18n-data">{"ru": {"pageTitle": "Клавиатурный тренажёр", "appTitle": "Клавиатурный тренажёр", "statCpm": "Знаков/мин", "statWpm": "Слов/мин", "statAcc": "Точность", "statTime": "Время", "statErrs": "Ошибки", "referencePrefix": "Текст:", "typingPlaceholder": "Начните набирать здесь…", "typingLabel": "Набор текста", "toolbarAria": "Режимы заданий", "btnText": "Текст", "btnDigits": "Цифры", "btnNumbers": "Числа", "btnBigrams": "Биграммы", "btnTrimms": "Триммы", "btnChunks": "Связки", "btnWords": "Слова", "historyTitle": "Результаты попыток", "historyWhen": "Когда", "historyMode": "Режим", "historyCpm": "Зн/м", "historyWpm": "Сл/м", "historyAcc": "Точность", "historyTime": "Время", "historyErrs": "Ошибки", "historyEmpty": "Завершите набор текста — строка появится здесь.", "soundFooterAria": "Звук при наборе", "soundLabel": "Звук клавиш", "soundHint": "Профиль щелчка Web Audio при верном нажатии; выбор сохраняется в этом браузере.", "soundPresetDefault": "Базовый", "soundSilent": "Тихий (silent)", "soundTwStd": "Пишущая машинка", "soundTwVintage": "Пишмаш: винтаж", "soundTwPortable": "Пишмаш: портатив", "langSwitcherAria": "Язык интерфейса", "fetchError": "Не удалось подобрать статью только с латинскими буквами или сеть недоступна — показан запасной текст.", "fallbackTitle": "Встроенный текст", "modes": {"wiki": "Текст", "digits": "Цифры", "numbers": "Числа", "bigrams": "Биграммы", "trimms": "Триммы", "chunks": "Связки", "words": "Слова"}, "hints": {"wiki": "Текст подгружается c <a href=\"https://simple.wikipedia.org\" target=\"_blank\" rel=\"noopener\">Simple English Wikipedia</a> (берутся только отрывки без «чужих» алфавитов в буквах). Неверный символ не засчитывается — нужно нажать правильную клавишу. Если сеть или подбор не удались — встроенные отрывки.", "digits": "Фиксированные пары двузначных чисел (56↔65, 78↔87, 12↔21, 90↔09, 34↔43) — по 10 чередований на каждую пару, через пробел. Как в режиме «Числа»: неверная цифра не пишется в поле.", "numbers": "Случайные числа из цифр (через пробел) для тренировки ряда и numpad. Неверный символ не пишется в поле — сначала нажмите верную цифру; звук и красная вспышка подсказывают ошибку.", "bigrams": "Восемьдесят случайных английских биграмм из пула частых пар букв. Неверный символ не засчитывается, пока не нажмёте нужную клавишу.", "trimms": "Сорок случайных фрагментов из частых трёх–четырёхбуквенных сочетаний английского (the, ing, -tion и т.п.). Строгий режим ввода: только точное совпадение c эталоном.", "chunks": "Связки букв для перекатов пальцев и привычных морфем в английском. Неправильная клавиша не продвигает ввод — подсветка и звук, как в остальных режимах.", "words": "Случайные английские слова из расширенного списка частых слов, через пробел. Учитываются апострофы в don’t, won’t и т.п. Ошибочный символ не попадает в поле."}, "exercise": {"digitsTitle": "Цифры · {pairs} пар × по {repeat} чередований (через пробел)", "numbersTitle": "Числа · {count} блоков по {len} цифры (через пробел)", "bigramsTitle": "Биграммы · 80 элементов", "trimmsTitle": "Триммы · 40 элементов", "chunksTitle": "Связки · 40 элементов", "wordsTitle": "Слова · {count} слов из пула {pool} (через пробел)"}}, "en": {"pageTitle": "Typing trainer", "appTitle": "Typing trainer", "statCpm": "CPM", "statWpm": "WPM", "statAcc": "Accuracy", "statTime": "Time", "statErrs": "Errors", "referencePrefix": "Text:", "typingPlaceholder": "Start typing here…", "typingLabel": "Typing area", "toolbarAria": "Exercise modes", "btnText": "Text", "btnDigits": "Digits", "btnNumbers": "Numbers", "btnBigrams": "Bigrams", "btnTrimms": "Trims", "btnChunks": "Chunks", "btnWords": "Words", "historyTitle": "Session results", "historyWhen": "When", "historyMode": "Mode", "historyCpm": "CPM", "historyWpm": "WPM", "historyAcc": "Accuracy", "historyTime": "Time", "historyErrs": "Errors", "historyEmpty": "Finish typing a line — it will appear here.", "soundFooterAria": "Keypress sound", "soundLabel": "Key sound", "soundHint": "Web Audio click profile on correct key; choice is saved in this browser.", "soundPresetDefault": "Default", "soundSilent": "Quiet (silent)", "soundTwStd": "Typewriter", "soundTwVintage": "Typewriter: vintage", "soundTwPortable": "Typewriter: portable", "langSwitcherAria": "Interface language", "fetchError": "Could not fetch a Latin-only article or the network is unavailable — showing built-in text.", "fallbackTitle": "Built-in text", "modes": {"wiki": "Text", "digits": "Digits", "numbers": "Numbers", "bigrams": "Bigrams", "trimms": "Trims", "chunks": "Chunks", "words": "Words"}, "hints": {"wiki": "Text is loaded from <a href=\"https://simple.wikipedia.org\" target=\"_blank\" rel=\"noopener\">Simple English Wikipedia</a> (only snippets without non-Latin letters). Wrong keys are not accepted — press the correct key. If the network fails or no snippet fits, built-in paragraphs are used.", "digits": "Fixed two-digit pairs (56↔65, 78↔87, 12↔21, 90↔09, 34↔43) — 10 alternations per pair, space-separated. Wrong digits are not entered, like in Numbers.", "numbers": "Random digit groups (space-separated) for row and numpad practice. Wrong keys are not entered; sound and red flash on mistakes.", "bigrams": "Eighty random English bigrams from a pool of common letter pairs. Wrong keys are not accepted until you press the right one.", "trimms": "Forty random fragments from common 3–4 letter English chunks (the, ing, -tion, etc.). Strict mode: exact match only.", "chunks": "Letter clusters for finger rolls and common English morphemes. Wrong keys do not advance — highlight and sound like other modes.", "words": "Random English words from a large frequent-word list, space-separated; apostrophes in don’t, won’t, etc. Wrong keys are not entered."}, "exercise": {"digitsTitle": "Digits · {pairs} pairs × {repeat} alternations each (space-separated)", "numbersTitle": "Numbers · {count} blocks of {len} digits (space-separated)", "bigramsTitle": "Bigrams · 80 items", "trimmsTitle": "Trims · 40 items", "chunksTitle": "Chunks · 40 items", "wordsTitle": "Words · {count} words from pool of {pool} (space-separated)"}}}</script>
   <script>
 (function () {
   var WIKI_SUMMARY = "https://simple.wikipedia.org/api/rest_v1/page/random/summary";
@@ -524,6 +570,69 @@
     "Music is a form of art that uses sound organized in time. People make music with voices and many kinds of instruments. People listen to music for fun and for many other reasons.",
     "The Internet is a global system of connected computer networks. It lets people share information and talk to each other using many services like email and the World Wide Web."
   ];
+
+  var I18N = JSON.parse(document.getElementById("i18n-data").textContent);
+  var LANG_KEY = "typing-trainer-lang";
+
+  function localePackKeys() {
+    var keys = [];
+    var k;
+    for (k in I18N) {
+      if (
+        Object.prototype.hasOwnProperty.call(I18N, k) &&
+        I18N[k] &&
+        typeof I18N[k] === "object" &&
+        !Array.isArray(I18N[k])
+      ) {
+        keys.push(k);
+      }
+    }
+    keys.sort(function (a, b) {
+      if (a === "en") return -1;
+      if (b === "en") return 1;
+      return a.localeCompare(b);
+    });
+    return keys;
+  }
+
+  var currentLang = "en";
+  try {
+    var _lsLang = localStorage.getItem(LANG_KEY);
+    if (_lsLang && I18N[_lsLang] && typeof I18N[_lsLang] === "object") {
+      currentLang = _lsLang;
+    }
+  } catch (eLang) {}
+  var _localeKeys = localePackKeys();
+  if (!I18N[currentLang] || typeof I18N[currentLang] !== "object") {
+    currentLang = _localeKeys.length ? _localeKeys[0] : "en";
+  }
+
+  function t(path) {
+    var parts = path.split(".");
+    var cur = I18N[currentLang];
+    var ti;
+    for (ti = 0; ti < parts.length; ti++) {
+      if (!cur || typeof cur !== "object") {
+        return path;
+      }
+      cur = cur[parts[ti]];
+    }
+    return typeof cur === "string" ? cur : path;
+  }
+
+  function tf(path, vars) {
+    var s = t(path);
+    if (!vars || typeof s !== "string") {
+      return s;
+    }
+    var vk;
+    for (vk in vars) {
+      if (Object.prototype.hasOwnProperty.call(vars, vk)) {
+        s = s.split("{" + vk + "}").join(String(vars[vk]));
+      }
+    }
+    return s;
+  }
 
   var referenceEl = document.getElementById("reference");
   var titleEl = document.getElementById("article-title");
@@ -539,27 +648,14 @@
   var hintEl = document.getElementById("mode-hint");
   var actionButtons = document.querySelectorAll(".actions button");
 
-  var MODE_HINTS = {
-    wiki:
-      'Текст подгружается c <a href="https://simple.wikipedia.org" target="_blank" rel="noopener">Simple English Wikipedia</a> (берутся только отрывки без «чужих» алфавитов в буквах). Неверный символ не засчитывается — нужно нажать правильную клавишу. Если сеть или подбор не удались — встроенные отрывки.',
-    digits:
-      "Фиксированные пары двузначных чисел (56↔65, 78↔87, 12↔21, 90↔09, 34↔43) — по 10 чередований на каждую пару, через пробел. Как в режиме «Числа»: неверная цифра не пишется в поле.",
-    numbers:
-      "Случайные числа из цифр (через пробел) для тренировки ряда и numpad. Неверный символ не пишется в поле — сначала нажмите верную цифру; звук и красная вспышка подсказывают ошибку.",
-    bigrams:
-      "Восемьдесят случайных английских биграмм из пула частых пар букв. Неверный символ не засчитывается, пока не нажмёте нужную клавишу.",
-    trimms:
-      "Сорок случайных фрагментов из частых трёх–четырёхбуквенных сочетаний английского (the, ing, -tion и т.п.). Строгий режим ввода: только точное совпадение c эталоном.",
-    chunks:
-      "Связки букв для перекатов пальцев и привычных морфем в английском. Неправильная клавиша не продвигает ввод — подсветка и звук, как в остальных режимах.",
-    words:
-      "Случайные английские слова из расширенного списка частых слов (top 300+), через пробел. Учитываются апострофы в don’t, won’t и т.п. Ошибочный символ не попадает в поле.",
-  };
-
   function setModeHint(modeKey) {
     if (!hintEl) return;
-    var html = MODE_HINTS[modeKey];
-    if (html) hintEl.innerHTML = html;
+    var pack = I18N[currentLang];
+    if (!pack || !pack.hints) return;
+    var html = pack.hints[modeKey];
+    if (typeof html === "string") {
+      hintEl.innerHTML = html;
+    }
   }
 
   function setSelectedModeButton(el) {
@@ -699,7 +795,7 @@
   var errorCount = 0;
   var prevTyped = "";
   var audioCtx = null;
-  var activeModeLabel = "Текст";
+  var activeModeKey = "wiki";
   var runCompleteRecorded = false;
 
   function KeyboardSound() {
@@ -1334,6 +1430,177 @@
     "typewriter-portable": true,
   };
 
+  function updateSoundSelectLabels() {
+    if (!keySoundSelect) return;
+    var map = {
+      default: "soundPresetDefault",
+      silent: "soundSilent",
+      "typewriter-standard": "soundTwStd",
+      "typewriter-vintage": "soundTwVintage",
+      "typewriter-portable": "soundTwPortable",
+    };
+    var i;
+    for (i = 0; i < keySoundSelect.options.length; i++) {
+      var opt = keySoundSelect.options[i];
+      var lk = map[opt.value];
+      if (lk) {
+        opt.textContent = t(lk);
+      }
+    }
+  }
+
+  function reapplyExerciseTitle() {
+    if (!titleEl) return;
+    if (activeModeKey === "wiki") {
+      if (fetchErrorEl && !fetchErrorEl.hidden) {
+        titleEl.textContent = t("fallbackTitle");
+      }
+      return;
+    }
+    switch (activeModeKey) {
+      case "digits":
+        titleEl.textContent = tf("exercise.digitsTitle", {
+          pairs: String(DIGITS_PAIR_SECTIONS.length),
+          repeat: String(DIGITS_PAIR_REPEAT),
+        });
+        break;
+      case "numbers":
+        titleEl.textContent = tf("exercise.numbersTitle", {
+          count: String(NUMBERS_COUNT),
+          len: String(NUMBERS_BLOCK_LEN),
+        });
+        break;
+      case "bigrams":
+        titleEl.textContent = t("exercise.bigramsTitle");
+        break;
+      case "trimms":
+        titleEl.textContent = t("exercise.trimmsTitle");
+        break;
+      case "chunks":
+        titleEl.textContent = t("exercise.chunksTitle");
+        break;
+      case "words":
+        titleEl.textContent = tf("exercise.wordsTitle", {
+          count: String(WORDS_COUNT),
+          pool: String(WORDS_TOP300.length),
+        });
+        break;
+      default:
+        break;
+    }
+  }
+
+  function populateLangSelect() {
+    var langSelect = document.getElementById("lang-select");
+    if (!langSelect) return;
+    var keys = localePackKeys();
+    langSelect.innerHTML = "";
+    var i;
+    for (i = 0; i < keys.length; i++) {
+      var opt = document.createElement("option");
+      opt.value = keys[i];
+      opt.textContent = keys[i];
+      langSelect.appendChild(opt);
+    }
+  }
+
+  function applyLanguage() {
+    document.documentElement.lang = currentLang;
+    document.title = t("pageTitle");
+    var ah = document.getElementById("app-heading");
+    if (ah) {
+      ah.textContent = t("appTitle");
+    }
+    var rp = document.getElementById("ref-prefix");
+    if (rp) {
+      rp.textContent = t("referencePrefix");
+    }
+    var langSelect = document.getElementById("lang-select");
+    if (langSelect) {
+      langSelect.setAttribute("aria-label", t("langSwitcherAria"));
+      if (localePackKeys().indexOf(currentLang) >= 0) {
+        langSelect.value = currentLang;
+      }
+    }
+    var lblLang = document.getElementById("lbl-lang-select");
+    if (lblLang) {
+      lblLang.textContent = t("langSwitcherAria");
+    }
+    var lCpm = document.getElementById("lbl-stat-cpm");
+    if (lCpm) lCpm.textContent = t("statCpm");
+    var lWpm = document.getElementById("lbl-stat-wpm");
+    if (lWpm) lWpm.textContent = t("statWpm");
+    var lAcc = document.getElementById("lbl-stat-acc");
+    if (lAcc) lAcc.textContent = t("statAcc");
+    var lTime = document.getElementById("lbl-stat-time");
+    if (lTime) lTime.textContent = t("statTime");
+    var lErrs = document.getElementById("lbl-stat-errs");
+    if (lErrs) lErrs.textContent = t("statErrs");
+    typingEl.placeholder = t("typingPlaceholder");
+    var lblTyping = document.getElementById("lbl-typing");
+    if (lblTyping) {
+      lblTyping.textContent = t("typingLabel");
+    }
+    var tb = document.getElementById("actions-toolbar");
+    if (tb) {
+      tb.setAttribute("aria-label", t("toolbarAria"));
+    }
+    btnText.textContent = t("btnText");
+    btnDigits.textContent = t("btnDigits");
+    btnNumbers.textContent = t("btnNumbers");
+    btnBigrams.textContent = t("btnBigrams");
+    btnTrimms.textContent = t("btnTrimms");
+    btnChunks.textContent = t("btnChunks");
+    btnWords.textContent = t("btnWords");
+    var hh = document.getElementById("history-heading");
+    if (hh) hh.textContent = t("historyTitle");
+    var h1 = document.getElementById("hist-th-when");
+    if (h1) h1.textContent = t("historyWhen");
+    var h2 = document.getElementById("hist-th-mode");
+    if (h2) h2.textContent = t("historyMode");
+    var h3 = document.getElementById("hist-th-cpm");
+    if (h3) h3.textContent = t("historyCpm");
+    var h4 = document.getElementById("hist-th-wpm");
+    if (h4) h4.textContent = t("historyWpm");
+    var h5 = document.getElementById("hist-th-acc");
+    if (h5) h5.textContent = t("historyAcc");
+    var h6 = document.getElementById("hist-th-time");
+    if (h6) h6.textContent = t("historyTime");
+    var h7 = document.getElementById("hist-th-errs");
+    if (h7) h7.textContent = t("historyErrs");
+    var he = document.getElementById("history-empty");
+    if (he) he.textContent = t("historyEmpty");
+    var sf = document.getElementById("sound-footer");
+    if (sf) {
+      sf.setAttribute("aria-label", t("soundFooterAria"));
+    }
+    var lblSound = document.getElementById("lbl-sound");
+    if (lblSound) {
+      lblSound.textContent = t("soundLabel");
+    }
+    var ksh = document.getElementById("key-sound-hint");
+    if (ksh) {
+      ksh.textContent = t("soundHint");
+    }
+    updateSoundSelectLabels();
+    setModeHint(activeModeKey);
+    if (fetchErrorEl && !fetchErrorEl.hidden) {
+      fetchErrorEl.textContent = t("fetchError");
+    }
+    reapplyExerciseTitle();
+  }
+
+  function setLang(lang) {
+    if (!I18N[lang] || typeof I18N[lang] !== "object") {
+      return;
+    }
+    currentLang = lang;
+    try {
+      localStorage.setItem(LANG_KEY, lang);
+    } catch (eSet) {}
+    applyLanguage();
+  }
+
   function isTypewriterSoundId(id) {
     return (
       id === "typewriter-standard" ||
@@ -1482,7 +1749,7 @@
 
   function pickFallback() {
     var i = Math.floor(Math.random() * FALLBACK.length);
-    return { title: "Встроенный текст", extract: FALLBACK[i] };
+    return { title: t("fallbackTitle"), extract: FALLBACK[i] };
   }
 
   function generateDigitsPairsSequence() {
@@ -1501,13 +1768,12 @@
   function loadDigits() {
     fetchErrorEl.hidden = true;
     applyText(
-      "Цифры · " +
-        DIGITS_PAIR_SECTIONS.length +
-        " пар × по " +
-        DIGITS_PAIR_REPEAT +
-        " чередований (через пробел)",
+      tf("exercise.digitsTitle", {
+        pairs: String(DIGITS_PAIR_SECTIONS.length),
+        repeat: String(DIGITS_PAIR_REPEAT),
+      }),
       generateDigitsPairsSequence(),
-      "Цифры"
+      "digits"
     );
   }
 
@@ -1526,13 +1792,12 @@
   function loadNumbers() {
     fetchErrorEl.hidden = true;
     applyText(
-      "Числа · " +
-        NUMBERS_COUNT +
-        " блоков по " +
-        NUMBERS_BLOCK_LEN +
-        " цифры (через пробел)",
+      tf("exercise.numbersTitle", {
+        count: String(NUMBERS_COUNT),
+        len: String(NUMBERS_BLOCK_LEN),
+      }),
       generateNumbersSequence(),
-      "Числа"
+      "numbers"
     );
   }
 
@@ -1546,7 +1811,7 @@
 
   function loadBigrams() {
     fetchErrorEl.hidden = true;
-    applyText("Биграммы · 80 элементов", generateBigramsSequence(), "Биграммы");
+    applyText(t("exercise.bigramsTitle"), generateBigramsSequence(), "bigrams");
   }
 
   function generateTrimmsSequence() {
@@ -1559,7 +1824,7 @@
 
   function loadTrimms() {
     fetchErrorEl.hidden = true;
-    applyText("Триммы · 40 элементов", generateTrimmsSequence(), "Триммы");
+    applyText(t("exercise.trimmsTitle"), generateTrimmsSequence(), "trimms");
   }
 
   function generateChunksSequence() {
@@ -1572,7 +1837,7 @@
 
   function loadChunks() {
     fetchErrorEl.hidden = true;
-    applyText("Связки · 40 элементов", generateChunksSequence(), "Связки");
+    applyText(t("exercise.chunksTitle"), generateChunksSequence(), "chunks");
   }
 
   function generateWordsSequence() {
@@ -1587,13 +1852,12 @@
   function loadWords() {
     fetchErrorEl.hidden = true;
     applyText(
-      "Слова · " +
-        WORDS_COUNT +
-        " слов из пула " +
-        WORDS_TOP300.length +
-        " (через пробел)",
+      tf("exercise.wordsTitle", {
+        count: String(WORDS_COUNT),
+        pool: String(WORDS_TOP300.length),
+      }),
       generateWordsSequence(),
-      "Слова"
+      "words"
     );
   }
 
@@ -1653,12 +1917,15 @@
         : 0;
     var wpm = Math.round(cpm / 5);
     return {
-      when: new Date().toLocaleTimeString("ru-RU", {
+      when: new Date().toLocaleTimeString(
+        currentLang === "en" ? "en-US" : "ru-RU",
+        {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
-      }),
-      mode: activeModeLabel,
+      }
+      ),
+      mode: t("modes." + activeModeKey),
       cpm: cpm,
       wpm: wpm,
       acc: accNum + "%",
@@ -1741,9 +2008,9 @@
     updateHighlight();
   }
 
-  function applyText(title, text, modeLabel) {
-    if (typeof modeLabel === "string" && modeLabel.length) {
-      activeModeLabel = modeLabel;
+  function applyText(title, text, modeKey) {
+    if (typeof modeKey === "string" && modeKey.length) {
+      activeModeKey = modeKey;
     }
     target = text;
     titleEl.textContent = title;
@@ -1792,13 +2059,12 @@
     attempt(MAX_WIKI_ATTEMPTS)
       .then(function (ok) {
         if (ok) {
-          applyText(ok.title, ok.snippet, "Текст");
+          applyText(ok.title, ok.snippet, "wiki");
         } else {
           var fb = pickFallback();
-          fetchErrorEl.textContent =
-            "Не удалось подобрать статью только с латинскими буквами или сеть недоступна — показан запасной текст.";
+          fetchErrorEl.textContent = t("fetchError");
           fetchErrorEl.hidden = false;
-          applyText(fb.title, normalizeText(fb.extract), "Текст");
+          applyText(fb.title, normalizeText(fb.extract), "wiki");
         }
       })
       .finally(function () {
@@ -1958,9 +2224,16 @@
     loadWords();
   });
 
-  initKeySoundSelect();
+  populateLangSelect();
+  var langSelectEl = document.getElementById("lang-select");
+  if (langSelectEl) {
+    langSelectEl.addEventListener("change", function () {
+      setLang(langSelectEl.value);
+    });
+  }
 
-  setModeHint("wiki");
+  applyLanguage();
+  initKeySoundSelect();
   loadFromWiki();
 })();
   </script>
